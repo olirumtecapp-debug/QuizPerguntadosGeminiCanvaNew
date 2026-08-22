@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal Quiz Perguntados - Super Master Edition</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Google Fonts: Fredoka & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            fredoka: ['Fredoka', 'sans-serif'],
+            sans: ['Inter', 'sans-serif']
+          },
+          colors: {
+            artes: '#d946ef',
+            ciencias: '#10b981',
+            esportes: '#ef4444',
+            entretenimento: '#f59e0b',
+            geografia: '#3b82f6',
+            historia: '#eab308',
+            coroa: '#f59e0b',
+            portalDark: '#0f172a',
+            portalCard: 'rgba(30, 41, 59, 0.75)'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background: radial-gradient(circle at top left, #1e1b4b 0%, #0f172a 50%, #020617 100%);
+      min-height: 100vh;
+      color: #f8fafc;
+      user-select: none;
+      -webkit-user-select: none;
+      overflow-x: hidden;
+    }
+
+    /* Modern Glassmorphism Styling */
+    .glass-nav {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+    }
+
+    .glass-modal {
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    /* Wheel Canvas Shadows */
+    .wheel-container {
+      position: relative;
+      filter: drop-shadow(0px 20px 25px rgba(0, 0, 0, 0.6));
+    }
+
+    /* Pin / Flapper Physics Needle */
+    .wheel-needle-box {
+      transform-origin: top center;
+      transition: transform 0.05s ease-out;
+    }
+
+    /* Glow Effects */
+    .glow-gold {
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.4);
+    }
+    .glow-purple {
+      box-shadow: 0 0 25px rgba(168, 85, 247, 0.4);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 25px rgba(6, 182, 212, 0.4);
+    }
+
+    /* Pulse Glow */
+    @keyframes pulseGlow {
+      0%, 100% { filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.6)); transform: scale(1); }
+      50% { filter: drop-shadow(0 0 28px rgba(245, 158, 11, 0.95)); transform: scale(1.05); }
+    }
+    .pulse-glow-anim {
+      animation: pulseGlow 2s infinite ease-in-out;
+    }
+
+    /* LED Lights Blink */
+    @keyframes ledBlink {
+      0%, 100% { opacity: 0.3; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 10px #fbbf24; }
+    }
+    .led-light {
+      animation: ledBlink 1.2s infinite ease-in-out;
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+    }
+
+    /* Button bounce fix */
+    .btn-bounce {
+      transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s ease;
+    }
+    .btn-bounce:hover {
+      transform: scale(1.04);
+    }
+    .btn-bounce:active {
+      transform: scale(0.96);
+    }
+
+    /* Timer Animation */
+    .timer-fill {
+      transition: width 1s linear, background-color 0.3s ease;
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen text-slate-100">
+
+  <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+  <header class="glass-nav sticky top-0 z-40 w-full px-4 py-3">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Brand & Player Avatar Info -->
+      <div class="flex items-center gap-3">
+        <div id="header-avatar" class="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-400 to-yellow-500 flex items-center justify-center text-2xl shadow-lg border-2 border-amber-300/50 cursor-pointer hover:scale-105 transition" onclick="switchTab('profile')">
+          <span id="player-avatar-icon">👑</span>
+          <span id="player-level-badge" class="absolute -bottom-1 -right-1 bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-white">Nv.5</span>
+        </div>
+        <div class="hidden sm:block">
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold tracking-tight text-amber-400 font-fredoka">QUIZ PORTAL</h1>
+            <span class="bg-amber-500/20 text-amber-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border border-amber-500/30">PRO</span>
+          </div>
+          <!-- XP Bar -->
+          <div class="flex items-center gap-2 w-32">
+            <div class="flex-1 bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700">
+              <div id="player-xp-bar" class="bg-gradient-to-r from-amber-400 to-yellow-300 h-full w-3/4 rounded-full transition-all duration-300"></div>
+            </div>
+            <span id="player-xp-text" class="text-[10px] text-slate-400 font-mono">750/1000 XP</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Currencies & Quick Stats -->
+      <div class="flex items-center gap-2 sm:gap-4">
+        <!-- Moedas -->
+        <div class="flex items-center gap-1.5 bg-slate-900/80 border border-slate-700/80 px-3 py-1.5 rounded-2xl shadow-inner">
+          <span class="text-yellow-400 text-base">🪙</span>
+          <span id="coins-display" class="font-extrabold text-sm sm:text-base text-yellow-300 font-mono">250</span>
+        </div>
+
+        <!-- Gemas -->
+        <div class="flex items-center gap-1.5 bg-slate-900/80 border border-slate-700/80 px-3 py-1.5 rounded-2xl shadow-inner">
+          <span class="text-cyan-400 text-base">💎</span>
+          <span id="gems-display" class="font-extrabold text-sm sm:text-base text-cyan-300 font-mono">15</span>
+        </div>
+
+        <!-- Toggle Som -->
+        <button id="sound-toggle-btn" class="w-10 h-10 bg-slate-800/80 hover:bg-slate-700/80 rounded-2xl flex items-center justify-center transition border border-slate-700 text-slate-300 hover:text-white">
+          <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="bg-slate-900/60 border-b border-slate-800/80 py-2 px-4 sticky top-[61px] z-30 backdrop-blur-md">
+    <div class="max-w-4xl mx-auto flex justify-between items-center overflow-x-auto gap-2 no-scrollbar text-xs sm:text-sm font-bold">
+      <button onclick="switchTab('home')" id="tab-home" class="nav-tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-amber-400 bg-amber-500/10 border border-amber-500/30 transition">
+        <i class="fa-solid fa-house"></i>
+        <span>Início</span>
+      </button>
+      <button onclick="switchTab('wheel')" id="tab-wheel" class="nav-tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-slate-400 hover:text-white transition">
+        <i class="fa-solid fa-arrows-spin text-purple-400"></i>
+        <span>Roleta Clássica</span>
+      </button>
+      <button onclick="switchTab('online')" id="tab-online" class="nav-tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-slate-400 hover:text-white transition">
+        <i class="fa-solid fa-globe text-cyan-400"></i>
+        <span>Duelo 1v1</span>
+      </button>
+      <button onclick="switchTab('blitz')" id="tab-blitz" class="nav-tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-slate-400 hover:text-white transition">
+        <i class="fa-solid fa-bolt text-yellow-400"></i>
+        <span>Modo Blitz</span>
+      </button>
+      <button onclick="switchTab('ranking')" id="tab-ranking" class="nav-tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-slate-400 hover:text-white transition">
+        <i class="fa-solid fa-trophy text-amber-400"></i>
+        <span>Ranking</span>
+      </button>
+      <button onclick="switchTab('shop')" id="tab-shop" class="nav-tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-slate-400 hover:text-white transition">
+        <i class="fa-solid fa-store text-emerald-400"></i>
+        <span>Loja</span>
+      </button>
+      <button onclick="switchTab('profile')" id="tab-profile" class="nav-tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-slate-400 hover:text-white transition">
+        <i class="fa-solid fa-user text-indigo-400"></i>
+        <span>Perfil</span>
+      </button>
+    </div>
+  </nav>
+
+  <main class="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-center items-center relative z-10">
+
+    <!-- VIEW 1: HOME DASHBOARD -->
+    <section id="view-home" class="portal-view w-full max-w-4xl space-y-6">
+      
+      <!-- Banner Principal -->
+      <div class="glass-card rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-purple-900/60 via-indigo-900/40 to-slate-900/80 border border-purple-500/30 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="space-y-3 max-w-lg z-10 text-center md:text-left">
+          <div class="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/20 border border-amber-500/40 rounded-full text-amber-300 text-xs font-bold uppercase tracking-wider">
+            <i class="fa-solid fa-fire text-amber-400"></i> Novo Evento Ativo
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Super Desafio das 6 Categonas</h2>
+          <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+            Gire a roleta física, conquiste os 6 personagens temáticos, dispute partidas online ao vivo e atinja o topo do Ranking Mundial!
+          </p>
+          <div class="flex flex-wrap gap-3 pt-2 justify-center md:justify-start">
+            <button onclick="switchTab('wheel')" class="px-6 py-3.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-extrabold rounded-2xl shadow-lg border-b-4 border-amber-700 btn-bounce flex items-center gap-2">
+              <i class="fa-solid fa-play text-lg"></i> JOGAR AGORA
+            </button>
+            <button onclick="claimDailyReward()" id="daily-btn" class="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 font-bold rounded-2xl btn-bounce flex items-center gap-2">
+              <i class="fa-solid fa-gift text-lg text-amber-400"></i>
+              <span>Recompensa Diária</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Wheel Preview Mascot -->
+        <div class="relative flex items-center justify-center">
+          <div class="w-40 h-40 sm:w-48 sm:h-48 rounded-full bg-gradient-to-tr from-purple-600/40 to-amber-500/40 p-3 glow-purple flex items-center justify-center relative">
+            <div class="text-7xl sm:text-8xl pulse-glow-anim cursor-pointer" onclick="switchTab('wheel')">👑</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid de Modos de Jogo -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        <!-- Card Modo Clássico -->
+        <div onclick="switchTab('wheel')" class="glass-card rounded-2xl p-5 hover:border-purple-500/60 transition cursor-pointer group flex flex-col justify-between h-48 border border-white/10 relative overflow-hidden">
+          <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition text-8xl text-purple-400">🎨</div>
+          <div>
+            <div class="w-10 h-10 bg-purple-500/20 border border-purple-400/40 rounded-xl flex items-center justify-center text-purple-400 text-xl mb-3">
+              <i class="fa-solid fa-arrows-spin"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white group-hover:text-purple-300 transition">Roleta Clássica</h3>
+            <p class="text-xs text-slate-400 mt-1">Colecione os 6 personagens temáticos e complete a coroa!</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-bold text-purple-400">
+            <span>Iniciar Partida</span>
+            <i class="fa-solid fa-arrow-right transform group-hover:translate-x-1 transition"></i>
+          </div>
+        </div>
+
+        <!-- Card Duelo Online -->
+        <div onclick="switchTab('online')" class="glass-card rounded-2xl p-5 hover:border-cyan-500/60 transition cursor-pointer group flex flex-col justify-between h-48 border border-white/10 relative overflow-hidden">
+          <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition text-8xl text-cyan-400">⚔️</div>
+          <div>
+            <div class="w-10 h-10 bg-cyan-500/20 border border-cyan-400/40 rounded-xl flex items-center justify-center text-cyan-400 text-xl mb-3">
+              <i class="fa-solid fa-globe"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white group-hover:text-cyan-300 transition">Duelo 1v1 Online</h3>
+            <p class="text-xs text-slate-400 mt-1">Enfrente jogadores ao vivo em rodadas dinâmicas e pontuação em tempo real.</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-bold text-cyan-400">
+            <span>Procurar Oponente</span>
+            <i class="fa-solid fa-arrow-right transform group-hover:translate-x-1 transition"></i>
+          </div>
+        </div>
+
+        <!-- Card Desafio Blitz -->
+        <div onclick="switchTab('blitz')" class="glass-card rounded-2xl p-5 hover:border-yellow-500/60 transition cursor-pointer group flex flex-col justify-between h-48 border border-white/10 relative overflow-hidden">
+          <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition text-8xl text-yellow-400">⚡</div>
+          <div>
+            <div class="w-10 h-10 bg-yellow-500/20 border border-yellow-400/40 rounded-xl flex items-center justify-center text-yellow-400 text-xl mb-3">
+              <i class="fa-solid fa-bolt"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white group-hover:text-yellow-300 transition">Desafio Blitz 60s</h3>
+            <p class="text-xs text-slate-400 mt-1">Responda ao máximo de perguntas antes do tempo acabar com multiplicadores!</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-bold text-yellow-400">
+            <span>Desafiar Recorde</span>
+            <i class="fa-solid fa-arrow-right transform group-hover:translate-x-1 transition"></i>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- VIEW 2: ROLETA CLÁSSICA -->
+    <section id="view-wheel" class="portal-view w-full max-w-2xl flex flex-col items-center hidden">
+      
+      <!-- Coleção de Personagens Badges -->
+      <div class="w-full glass-card p-4 rounded-3xl mb-6 border border-white/15">
+        <div class="flex justify-between items-center mb-3 px-2">
+          <span class="text-xs font-extrabold text-slate-300 uppercase tracking-wider">Coleção de Personagens</span>
+          <span id="badge-count-text" class="text-xs font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/30">0 / 6 Conquistados</span>
+        </div>
+
+        <div class="grid grid-cols-6 gap-2 sm:gap-3 text-center" id="badges-container">
+          <!-- Artes -->
+          <div data-cat="artes" class="badge-slot grayscale opacity-40 bg-purple-900/40 border-2 border-purple-500/40 p-2.5 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
+            <span class="text-2xl sm:text-3xl">🎨</span>
+            <span class="text-[9px] font-bold text-purple-300 mt-1 uppercase hidden sm:block">Artes</span>
+          </div>
+          <!-- Ciências -->
+          <div data-cat="ciencias" class="badge-slot grayscale opacity-40 bg-emerald-900/40 border-2 border-emerald-500/40 p-2.5 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
+            <span class="text-2xl sm:text-3xl">🔬</span>
+            <span class="text-[9px] font-bold text-emerald-300 mt-1 uppercase hidden sm:block">Ciências</span>
+          </div>
+          <!-- Esportes -->
+          <div data-cat="esportes" class="badge-slot grayscale opacity-40 bg-red-900/40 border-2 border-red-500/40 p-2.5 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
+            <span class="text-2xl sm:text-3xl">⚽</span>
+            <span class="text-[9px] font-bold text-red-300 mt-1 uppercase hidden sm:block">Esportes</span>
+          </div>
+          <!-- Entretenimento -->
+          <div data-cat="entretenimento" class="badge-slot grayscale opacity-40 bg-amber-900/40 border-2 border-amber-500/40 p-2.5 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
+            <span class="text-2xl sm:text-3xl">🎬</span>
+            <span class="text-[9px] font-bold text-amber-300 mt-1 uppercase hidden sm:block">Lazer</span>
+          </div>
+          <!-- Geografia -->
+          <div data-cat="geografia" class="badge-slot grayscale opacity-40 bg-blue-900/40 border-2 border-blue-500/40 p-2.5 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
+            <span class="text-2xl sm:text-3xl">🌎</span>
+            <span class="text-[9px] font-bold text-blue-300 mt-1 uppercase hidden sm:block">Geografia</span>
+          </div>
+          <!-- História -->
+          <div data-cat="historia" class="badge-slot grayscale opacity-40 bg-yellow-900/40 border-2 border-yellow-500/40 p-2.5 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105">
+            <span class="text-2xl sm:text-3xl">📜</span>
+            <span class="text-[9px] font-bold text-yellow-300 mt-1 uppercase hidden sm:block">História</span>
+          </div>
+        </div>
+
+        <!-- Barra de Progresso de Coroa -->
+        <div class="mt-4 pt-3 border-t border-slate-700/60 flex items-center gap-3">
+          <span class="text-xl">👑</span>
+          <div class="flex-1 bg-slate-900 h-3 rounded-full overflow-hidden p-0.5 border border-slate-700">
+            <div id="crown-progress" class="bg-gradient-to-r from-amber-400 to-yellow-300 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <span id="crown-progress-text" class="text-xs font-extrabold text-amber-300 font-mono">0/3 para Coroa</span>
+        </div>
+      </div>
+
+      <!-- Roleta Física 3D & Needle Physics -->
+      <div class="relative flex flex-col items-center my-2 wheel-container">
+        
+        <!-- Ponteiro Físico (Needle Flapper) com Deformação de Ângulo -->
+        <div id="wheel-needle" class="wheel-needle-box z-30 -mb-5 relative drop-shadow-lg">
+          <div class="w-0 h-0 border-l-[18px] border-l-transparent border-r-[18px] border-r-transparent border-t-[36px] border-t-red-500 filter drop-shadow(0 4px 6px rgba(0,0,0,0.5))"></div>
+          <div class="w-3 h-3 bg-white rounded-full absolute -top-9 left-1/2 -translate-x-1/2 border-2 border-slate-800"></div>
+        </div>
+
+        <!-- Moldura Externa com Lâmpadas LED -->
+        <div class="relative p-4 rounded-full bg-gradient-to-tr from-slate-800 via-slate-900 to-slate-800 border-4 border-amber-500/50 shadow-2xl">
+          
+          <!-- Lâmpadas LED em volta da borda -->
+          <div class="absolute inset-2 rounded-full border border-yellow-400/20 pointer-events-none flex items-center justify-center">
+            <div class="absolute top-1 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-yellow-400 led-light"></div>
+            <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-yellow-400 led-light" style="animation-delay: 0.3s"></div>
+            <div class="absolute left-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-yellow-400 led-light" style="animation-delay: 0.6s"></div>
+            <div class="absolute right-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-yellow-400 led-light" style="animation-delay: 0.9s"></div>
+          </div>
+
+          <!-- Canvas da Roleta Realista -->
+          <canvas id="wheel-canvas" width="360" height="360" class="max-w-[85vw] max-h-[85vw] sm:w-[380px] sm:h-[380px] rounded-full"></canvas>
+          
+          <!-- Botão Central de Giro de Roleta -->
+          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+            <button id="spin-btn" class="w-24 h-24 sm:w-28 sm:h-28 bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black text-xl rounded-full border-4 border-white shadow-2xl flex flex-col items-center justify-center btn-bounce glow-gold cursor-pointer">
+              <span class="tracking-wider">GIRAR</span>
+              <i class="fa-solid fa-rotate text-sm mt-0.5 animate-spin hidden" id="spin-spinner"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- VIEW 3: DUELO 1V1 ONLINE -->
+    <section id="view-online" class="portal-view w-full max-w-2xl flex flex-col items-center hidden">
+      <div class="glass-card w-full rounded-3xl p-6 sm:p-8 text-center space-y-6 border border-cyan-500/30">
+        
+        <div class="flex items-center justify-center gap-3">
+          <span class="w-3 h-3 rounded-full bg-cyan-400 animate-ping"></span>
+          <h2 class="text-2xl font-extrabold text-white">Matchmaking Online Ao Vivo</h2>
+        </div>
+
+        <!-- Arena VS -->
+        <div class="flex items-center justify-between my-6 px-4">
+          <!-- Jogador (Você) -->
+          <div class="flex flex-col items-center gap-2">
+            <div class="w-20 h-20 bg-gradient-to-tr from-amber-400 to-yellow-500 rounded-2xl flex items-center justify-center text-4xl shadow-lg border-2 border-amber-300">
+              👑
+            </div>
+            <span class="font-bold text-sm text-slate-200">Você (Jogador)</span>
+            <span id="online-user-score" class="text-xl font-black text-amber-400 font-mono">0 pts</span>
+          </div>
+
+          <!-- Ícone VS -->
+          <div class="w-14 h-14 bg-gradient-to-tr from-red-600 to-pink-600 rounded-full flex items-center justify-center text-white font-black text-xl shadow-xl border-2 border-white animate-pulse">
+            VS
+          </div>
+
+          <!-- Oponente -->
+          <div class="flex flex-col items-center gap-2">
+            <div id="opponent-avatar" class="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center text-4xl shadow-lg border-2 border-slate-700">
+              <i class="fa-solid fa-user-secret text-slate-500"></i>
+            </div>
+            <span id="opponent-name" class="font-bold text-sm text-slate-400">Procurando...</span>
+            <span id="online-opp-score" class="text-xl font-black text-cyan-400 font-mono">0 pts</span>
+          </div>
+        </div>
+
+        <!-- Caixa de Status da Partida -->
+        <div id="online-status-box" class="p-4 bg-slate-900/80 rounded-2xl border border-slate-800 text-sm text-slate-300 font-mono">
+          Clique abaixo para encontrar um oponente em tempo real.
+        </div>
+
+        <button id="find-match-btn" onclick="startOnlineMatchmaking()" class="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold text-lg rounded-2xl shadow-xl border-b-4 border-blue-800 btn-bounce">
+          <i class="fa-solid fa-magnifying-glass mr-2"></i> BUSCAR ADVERSÁRIO ONLINE
+        </button>
+      </div>
+    </section>
+
+    <!-- VIEW 4: DESAFIO BLITZ 60S -->
+    <section id="view-blitz" class="portal-view w-full max-w-xl flex flex-col items-center hidden">
+      <div class="glass-card w-full rounded-3xl p-6 sm:p-8 text-center space-y-6 border border-yellow-500/30">
+        <div class="w-20 h-20 bg-gradient-to-tr from-yellow-400 to-amber-500 rounded-3xl flex items-center justify-center text-4xl mx-auto shadow-xl border-2 border-white pulse-glow-anim">
+          ⚡
+        </div>
+
+        <h2 class="text-3xl font-extrabold text-white">Desafio Blitz 60 Segundos</h2>
+        <p class="text-slate-300 text-sm">Responda o máximo de perguntas consecutivas em 60s. Cada acerto aumenta o combo de pontos!</p>
+
+        <div class="grid grid-cols-2 gap-4 my-4">
+          <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+            <span class="text-xs text-slate-400 uppercase font-bold block">Melhor Recorde Blitz</span>
+            <span id="blitz-high-score" class="text-2xl font-black text-yellow-400 font-mono">0 pts</span>
+          </div>
+          <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+            <span class="text-xs text-slate-400 uppercase font-bold block">Multiplicador Máx.</span>
+            <span class="text-2xl font-black text-amber-400 font-mono">5x Combo</span>
+          </div>
+        </div>
+
+        <button onclick="startBlitzGame()" class="w-full py-4 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 font-extrabold text-lg rounded-2xl shadow-xl border-b-4 border-amber-700 btn-bounce">
+          <i class="fa-solid fa-bolt mr-2"></i> INICIAR CORRIDA CONTRA O TEMPO
+        </button>
+      </div>
+    </section>
+
+    <!-- VIEW 5: RANKING GLOBAL -->
+    <section id="view-ranking" class="portal-view w-full max-w-2xl flex flex-col items-center hidden">
+      <div class="glass-card w-full rounded-3xl p-6 space-y-6 border border-amber-500/30">
+        
+        <div class="flex items-center justify-between">
+          <h2 class="text-2xl font-extrabold text-white flex items-center gap-2">
+            <i class="fa-solid fa-trophy text-amber-400"></i> Ranking Global
+          </h2>
+          <span class="text-xs bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full border border-amber-500/30 font-bold">Liga Diamante</span>
+        </div>
+
+        <!-- Pódio Top 3 -->
+        <div class="grid grid-cols-3 gap-2 pt-4 items-end text-center">
+          <!-- 2º Lugar -->
+          <div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-700 flex flex-col items-center">
+            <span class="text-2xl">🥈</span>
+            <span class="font-bold text-xs text-slate-200 mt-1">Lucia_Quiz</span>
+            <span class="text-xs font-mono text-slate-400">4,820 pts</span>
+          </div>
+          <!-- 1º Lugar -->
+          <div class="bg-gradient-to-b from-amber-500/20 to-slate-900 p-4 rounded-2xl border-2 border-amber-400 flex flex-col items-center -mt-4">
+            <span class="text-4xl">👑</span>
+            <span class="font-extrabold text-sm text-amber-300 mt-1">MestreQuiz99</span>
+            <span class="text-xs font-mono text-amber-400 font-bold">6,150 pts</span>
+          </div>
+          <!-- 3º Lugar -->
+          <div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-700 flex flex-col items-center">
+            <span class="text-2xl">🥉</span>
+            <span class="font-bold text-xs text-slate-200 mt-1">Carlos_BR</span>
+            <span class="text-xs font-mono text-slate-400">3,950 pts</span>
+          </div>
+        </div>
+
+        <!-- Lista de Jogadores -->
+        <div class="space-y-2 pt-2">
+          <div class="flex items-center justify-between p-3 bg-amber-500/10 rounded-2xl border border-amber-500/30 font-bold">
+            <div class="flex items-center gap-3">
+              <span class="text-amber-400 font-mono text-sm">#4</span>
+              <span>Você (Seu Perfil)</span>
+            </div>
+            <span id="rank-user-score" class="text-amber-300 font-mono">1,250 pts</span>
+          </div>
+          <div class="flex items-center justify-between p-3 bg-slate-900/60 rounded-2xl border border-slate-800 text-slate-300 text-sm">
+            <div class="flex items-center gap-3">
+              <span class="text-slate-500 font-mono">#5</span>
+              <span>Ana_Geografia</span>
+            </div>
+            <span class="font-mono text-slate-400">1,120 pts</span>
+          </div>
+          <div class="flex items-center justify-between p-3 bg-slate-900/60 rounded-2xl border border-slate-800 text-slate-300 text-sm">
+            <div class="flex items-center gap-3">
+              <span class="text-slate-500 font-mono">#6</span>
+              <span>Pedro_Historia</span>
+            </div>
+            <span class="font-mono text-slate-400">980 pts</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- VIEW 6: LOJA DE PODERES E AVATARES -->
+    <section id="view-shop" class="portal-view w-full max-w-3xl flex flex-col items-center hidden">
+      <div class="glass-card w-full rounded-3xl p-6 space-y-6 border border-emerald-500/30">
+        
+        <div class="flex items-center justify-between">
+          <h2 class="text-2xl font-extrabold text-white flex items-center gap-2">
+            <i class="fa-solid fa-store text-emerald-400"></i> Loja do Portal
+          </h2>
+          <span class="text-xs text-emerald-300 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/30 font-bold">Itens Exclusivos</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Item 1: Pacote 50:50 -->
+          <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-2xl border border-purple-500/30">
+                💣
+              </div>
+              <div>
+                <h4 class="font-bold text-white text-sm">50:50 Ajuda (x3)</h4>
+                <p class="text-xs text-slate-400">Elimina 2 erradas</p>
+              </div>
+            </div>
+            <button onclick="buyItem('bomb', 50)" class="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl btn-bounce">
+              🪙 50
+            </button>
+          </div>
+
+          <!-- Item 2: Pacote Tempo Extra -->
+          <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center text-2xl border border-blue-500/30">
+                ⏳
+              </div>
+              <div>
+                <h4 class="font-bold text-white text-sm">+10s Tempo (x3)</h4>
+                <p class="text-xs text-slate-400">Adiciona tempo extra</p>
+              </div>
+            </div>
+            <button onclick="buyItem('time', 40)" class="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl btn-bounce">
+              🪙 40
+            </button>
+          </div>
+
+          <!-- Item 3: Avatar Mago -->
+          <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-2xl border border-amber-500/30">
+                🧙‍♂️
+              </div>
+              <div>
+                <h4 class="font-bold text-white text-sm">Avatar Mago Supremo</h4>
+                <p class="text-xs text-slate-400">Ícone de perfil lendário</p>
+              </div>
+            </div>
+            <button onclick="buyAvatar('🧙‍♂️', 10)" class="px-3 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs rounded-xl btn-bounce">
+              💎 10
+            </button>
+          </div>
+
+          <!-- Item 4: Avatar Robô -->
+          <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-2xl border border-cyan-500/30">
+                🤖
+              </div>
+              <div>
+                <h4 class="font-bold text-white text-sm">Avatar Cyber Bot</h4>
+                <p class="text-xs text-slate-400">Ícone futurista</p>
+              </div>
+            </div>
+            <button onclick="buyAvatar('🤖', 10)" class="px-3 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs rounded-xl btn-bounce">
+              💎 10
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- VIEW 7: PERFIL DE JOGADOR -->
+    <section id="view-profile" class="portal-view w-full max-w-2xl flex flex-col items-center hidden">
+      <div class="glass-card w-full rounded-3xl p-6 sm:p-8 space-y-6 border border-indigo-500/30">
+        
+        <div class="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+          <div class="w-20 h-20 bg-gradient-to-tr from-amber-400 to-yellow-500 rounded-3xl flex items-center justify-center text-4xl shadow-xl border-2 border-white">
+            <span id="profile-avatar-icon">👑</span>
+          </div>
+          <div>
+            <h3 class="text-2xl font-extrabold text-white">Jogador Mestre</h3>
+            <p class="text-xs text-slate-400">Membro do Quiz Portal desde 2026</p>
+            <div class="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full text-xs font-bold">
+              Level 5 - Categoria Expert
+            </div>
+          </div>
+        </div>
+
+        <!-- Estatísticas Detalhadas -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+          <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 text-center">
+            <span class="text-xs text-slate-400 block font-bold">Total Respondido</span>
+            <span id="prof-stat-total" class="text-xl font-extrabold text-white font-mono">0</span>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 text-center">
+            <span class="text-xs text-slate-400 block font-bold">Taxa de Acerto</span>
+            <span id="prof-stat-acc" class="text-xl font-extrabold text-emerald-400 font-mono">0%</span>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 text-center">
+            <span class="text-xs text-slate-400 block font-bold">Vitórias Duelo</span>
+            <span id="prof-stat-wins" class="text-xl font-extrabold text-cyan-400 font-mono">0</span>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 text-center">
+            <span class="text-xs text-slate-400 block font-bold">Coroas Obtidas</span>
+            <span id="prof-stat-crowns" class="text-xl font-extrabold text-amber-400 font-mono">0</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL DE PERGUNTAS -->
+  <div id="question-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-lg flex items-center justify-center p-4 z-50 hidden">
+    <div class="glass-modal w-full max-w-lg rounded-3xl p-6 shadow-2xl relative border border-white/20 flex flex-col">
+      
+      <!-- Cabeçalho -->
+      <div class="flex items-center justify-between border-b border-slate-700/60 pb-4 mb-4">
+        <div class="flex items-center gap-3">
+          <div id="q-category-icon" class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl text-white shadow-md">
+            🎨
+          </div>
+          <div>
+            <span id="q-category-name" class="text-xs font-bold uppercase tracking-wider text-slate-400">ARTES</span>
+            <h3 id="q-category-title" class="text-lg font-extrabold text-white">Pergunta da Categoria</h3>
+          </div>
+        </div>
+
+        <!-- Cronômetro -->
+        <div class="flex items-center gap-2 bg-slate-900 px-3.5 py-1.5 rounded-2xl border border-slate-700">
+          <i class="fa-regular fa-clock text-amber-400 text-base"></i>
+          <span id="timer-text" class="font-black text-white text-base font-mono">20s</span>
+        </div>
+      </div>
+
+      <!-- Barra Visual do Cronômetro -->
+      <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden mb-5 border border-slate-800">
+        <div id="timer-bar" class="bg-emerald-500 h-full w-full timer-fill"></div>
+      </div>
+
+      <!-- Enunciado da Pergunta -->
+      <div class="mb-6 min-h-[75px] flex flex-col justify-center">
+        <!-- Badge de Dificuldade e Contador da Categoria -->
+        <div class="flex items-center justify-between mb-2">
+          <span id="q-difficulty-badge" class="text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            🟢 FÁCIL
+          </span>
+          <span id="q-progress-counter" class="text-[11px] font-mono font-bold text-slate-400">
+            Pergunta 1 de 12
+          </span>
+        </div>
+        <h4 id="question-text" class="text-base sm:text-lg font-bold text-slate-100 leading-relaxed">
+          Carregando pergunta...
+        </h4>
+      </div>
+
+      <!-- Opções de Resposta -->
+      <div id="options-container" class="space-y-3 mb-6">
+        <!-- Inserido dinamicamente via JS -->
+      </div>
+
+      <!-- Barra de Poderes / Ajudas -->
+      <div class="pt-4 border-t border-slate-700/60 flex justify-between items-center">
+        <span class="text-xs font-extrabold text-slate-400 uppercase">PODERES DISPONÍVEIS:</span>
+        <div class="flex gap-2">
+          <!-- Eliminar 2 erradas -->
+          <button id="power-bomb" class="px-3.5 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 rounded-xl flex items-center gap-2 text-purple-300 text-xs font-bold transition btn-bounce">
+            <i class="fa-solid fa-bomb text-purple-400"></i>
+            <span>50:50</span>
+            <span class="bg-purple-950 text-purple-200 px-1.5 py-0.5 rounded-md text-[10px] font-mono">🪙 30</span>
+          </button>
+          <!-- Tempo extra -->
+          <button id="power-time" class="px-3.5 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 rounded-xl flex items-center gap-2 text-blue-300 text-xs font-bold transition btn-bounce">
+            <i class="fa-solid fa-hourglass-plus text-blue-400"></i>
+            <span>+10s</span>
+            <span class="bg-blue-950 text-blue-200 px-1.5 py-0.5 rounded-md text-[10px] font-mono">🪙 20</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL DE SELEÇÃO DA COROA -->
+  <div id="crown-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-lg flex items-center justify-center p-4 z-50 hidden">
+    <div class="glass-modal w-full max-w-md rounded-3xl p-6 text-center border border-amber-400/40 space-y-4">
+      <div class="w-20 h-20 bg-amber-400 rounded-3xl flex items-center justify-center text-4xl mx-auto shadow-xl border-2 border-white pulse-glow-anim">
+        👑
+      </div>
+      <h3 class="text-2xl font-extrabold text-white">Desafio da Coroa!</h3>
+      <p class="text-xs text-slate-300">Escolha o personagem que você deseja desafiar agora:</p>
+      <div id="crown-choices-grid" class="grid grid-cols-2 gap-3 pt-2">
+        <!-- Categorias geradas via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE NOTIFICAÇÃO SIMPLES -->
+  <div id="alert-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden">
+    <div class="glass-modal w-full max-w-sm rounded-3xl p-6 text-center border border-white/20 space-y-4">
+      <div id="alert-icon" class="text-4xl">ℹ️</div>
+      <h3 id="alert-title" class="text-xl font-bold text-white">Aviso</h3>
+      <p id="alert-msg" class="text-sm text-slate-300"></p>
+      <button onclick="closeAlertModal()" class="w-full py-3 bg-amber-500 text-slate-950 font-extrabold rounded-xl btn-bounce">
+        ENTENDIDO
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Sound FX Engine usando Web Audio API
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      }
+
+      // Tick realista da roleta baseado na velocidade
+      playWheelTick(velocity = 1) {
+        if (!this.enabled) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        
+        // Frequência varia de acordo com a velocidade do giro
+        const freq = Math.min(800, 200 + velocity * 150);
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.03);
+        
+        gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.03);
+        
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.03);
+      }
+
+      playCorrect() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+          gain.gain.setValueAtTime(0.15, now + idx * 0.07);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.2);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.07);
+          osc.stop(now + idx * 0.07 + 0.2);
+        });
+      }
+
+      playWrong() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.linearRampToValueAtTime(90, now + 0.25);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      }
+
+      playFanfare() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        [440, 554.37, 659.25, 880].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+          gain.gain.setValueAtTime(0.25, now + idx * 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.3);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.1);
+          osc.stop(now + idx * 0.1 + 0.3);
+        });
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    // Banco de Perguntas Massivo por Categoria e Dificuldade
+    const questionsDB = {
+      artes: [
+        { q: "Quem pintou a 'Mona Lisa'?", options: ["Van Gogh", "Leonardo da Vinci", "Picasso", "Monet"], correct: 1, diff: "facil" },
+        { q: "Qual artista é famoso por cortar a própria orelha?", options: ["Vincent van Gogh", "Dalí", "Munch", "Cézanne"], correct: 0, diff: "facil" },
+        { q: "Em qual país nasceu o Renascimento cultural?", options: ["França", "Espanha", "Itália", "Inglaterra"], correct: 2, diff: "facil" },
+        { q: "Quem esculpiu a famosa estátua 'Davi' em mármore?", options: ["Donatello", "Michelangelo", "Bernini", "Rodin"], correct: 1, diff: "facil" },
+        { q: "Quem pintou o teto da Capela Sistina no Vaticano?", options: ["Leonardo da Vinci", "Rafael", "Michelangelo", "Tiziano"], correct: 2, diff: "medio" },
+        { q: "Qual pintura retrata o bombardeio nazista a uma vila espanhola?", options: ["Guernica", "O Grito", "A Persistência da Memória", "Les Demoiselles d'Avignon"], correct: 0, diff: "medio" },
+        { q: "Quem é a autora da obra modernista brasileira 'Abaporu'?", options: ["Anita Malfatti", "Tarsila do Amaral", "Lygia Clark", "Di Cavalcanti"], correct: 1, diff: "medio" },
+        { q: "O movimento Surrealista teve como um de seus maiores expoentes:", options: ["Claude Monet", "Salvador Dalí", "Pablo Picasso", "Andy Warhol"], correct: 1, diff: "medio" },
+        { q: "Qual é o estilo artístico famoso pelo uso extremo de luz e sombra (Chiaroscuro)?", options: ["Barroco", "Impressionismo", "Cubismo", "Rococó"], correct: 0, diff: "dificil" },
+        { q: "Qual escultor francês criou a famosa obra 'O Pensador'?", options: ["Auguste Rodin", "Edgar Degas", "Camille Claudel", "Alberto Giacometti"], correct: 0, diff: "dificil" },
+        { q: "O quadro 'Impressão, Nascer do Sol', que deu nome ao Impressionismo, é de:", options: ["Édouard Manet", "Claude Monet", "Paul Gauguin", "Pierre-Auguste Renoir"], correct: 1, diff: "dificil" },
+        { q: "Quem pintou o afresco 'A Escola de Atenas'?", options: ["Rafael Sanzio", "Sandro Botticelli", "Caravaggio", "Leonardo da Vinci"], correct: 0, diff: "dificil" }
+      ],
+      ciencias: [
+        { q: "Qual o elemento químico mais abundante no universo?", options: ["Oxigênio", "Carbono", "Hélio", "Hidrogênio"], correct: 3, diff: "facil" },
+        { q: "Qual planeta é conhecido como 'Planeta Vermelho'?", options: ["Vênus", "Marte", "Júpiter", "Mercúrio"], correct: 1, diff: "facil" },
+        { q: "Quantos ossos tem um corpo humano adulto?", options: ["180", "206", "300", "250"], correct: 1, diff: "facil" },
+        { q: "Qual destes metais é líquido à temperatura ambiente?", options: ["Mercúrio", "Chumbo", "Alumínio", "Prata"], correct: 0, diff: "facil" },
+        { q: "Qual o planeta mais quente do Sistema Solar?", options: ["Mercúrio", "Marte", "Vênus", "Júpiter"], correct: 2, diff: "medio" },
+        { q: "Qual é a velocidade aproximada da luz no vácuo?", options: ["150.000 km/s", "300.000 km/s", "500.000 km/s", "1.000.000 km/s"], correct: 1, diff: "medio" },
+        { q: "Qual organela celular é responsável pela produção de energia (ATP)?", options: ["Ribossomo", "Complexo de Golgi", "Mitocôndria", "Lisossomo"], correct: 2, diff: "medio" },
+        { q: "Qual é o tipo sanguíneo considerado doador universal?", options: ["A positivo", "AB positivo", "O negativo", "O positivo"], correct: 2, diff: "medio" },
+        { q: "Qual cientista desenvolveu a Teoria da Relatividade Geral?", options: ["Isaac Newton", "Albert Einstein", "Niels Bohr", "Nikola Tesla"], correct: 1, diff: "dificil" },
+        { q: "Qual partícula subatômica possui carga elétrica negativa?", options: ["Próton", "Nêutron", "Pósitron", "Elétron"], correct: 3, diff: "dificil" },
+        { q: "Qual o símbolo químico do Ouro na tabela periódica?", options: ["Ou", "Au", "Ag", "Fe"], correct: 1, diff: "dificil" },
+        { q: "Em qual camada da atmosfera terrestre se encontra a camada de ozônio?", options: ["Troposfera", "Estratosfera", "Mesosfera", "Termosfera"], correct: 1, diff: "dificil" }
+      ],
+      esportes: [
+        { q: "Quantos jogadores compõem um time de futebol em campo?", options: ["10", "11", "12", "9"], correct: 1, diff: "facil" },
+        { q: "Onde nasceram os Jogos Olímpicos da Era Moderna?", options: ["França", "Inglaterra", "Grécia", "EUA"], correct: 2, diff: "facil" },
+        { q: "Qual país venceu a Copa do Mundo FIFA de 2022?", options: ["França", "Brasil", "Argentina", "Alemanha"], correct: 2, diff: "facil" },
+        { q: "Quantos anéis formam o símbolo das Olimpíadas?", options: ["4", "5", "6", "7"], correct: 1, diff: "facil" },
+        { q: "Qual país é o maior campeão de Copas do Mundo de Futebol Masculino?", options: ["Alemanha", "Itália", "Argentina", "Brasil"], correct: 3, diff: "medio" },
+        { q: "Quantos jogadores de um mesmo time ficam em quadra no basquete?", options: ["5", "6", "7", "11"], correct: 0, diff: "medio" },
+        { q: "Qual atleta é o maior medalhista olímpico de todos os tempos?", options: ["Usain Bolt", "Michael Phelps", "Carl Lewis", "Simone Biles"], correct: 1, diff: "medio" },
+        { q: "Qual a distância exata de uma maratona oficial?", options: ["40 km", "42,195 km", "45 km", "50 km"], correct: 1, diff: "medio" },
+        { q: "Qual país sediou e venceu a PRIMEIRA Copa do Mundo em 1930?", options: ["Brasil", "Uruguai", "Itália", "Argentina"], correct: 1, diff: "dificil" },
+        { q: "Em qual arte marcial se utiliza a vestimenta chamada 'Gi' e faixas coloridas?", options: ["Judô / Jiu-Jitsu", "Esgrima", "Boxe", "Muay Thai"], correct: 0, diff: "dificil" },
+        { q: "Qual é a partida final do campeonato da NFL (futebol americano) chamada?", options: ["World Series", "Super Bowl", "NBA Finals", "Stanley Cup"], correct: 1, diff: "dificil" },
+        { q: "Qual a pontuação máxima possível em uma única jogada de Boliche (Strike contínuo)?", options: ["200", "250", "300", "400"], correct: 2, diff: "dificil" }
+      ],
+      entretenimento: [
+        { q: "Quem é o bruxo protagonista em Hogwarts?", options: ["Percy Jackson", "Harry Potter", "Frodo", "Gandalf"], correct: 1, diff: "facil" },
+        { q: "Qual é a animação de TV em horário nobre mais longa da história?", options: ["Os Simpsons", "Family Guy", "South Park", "Futurama"], correct: 0, diff: "facil" },
+        { q: "Quem é conhecido mundialmente como o 'Rei do Pop'?", options: ["Elvis Presley", "Michael Jackson", "Prince", "Freddie Mercury"], correct: 1, diff: "facil" },
+        { q: "Qual estúdio criou o personagem Mickey Mouse?", options: ["Warner Bros", "Pixar", "Disney", "Universal"], correct: 2, diff: "facil" },
+        { q: "Qual foi o primeiro filme da história a arrecadar mais de 2 bilhões de dólares?", options: ["Vingadores: Ultimato", "Titanic", "Avatar", "Star Wars 7"], correct: 1, diff: "medio" },
+        { q: "Qual super-herói do cinema é alter-ego do bilionário Tony Stark?", options: ["Capitão América", "Homem de Ferro", "Batman", "Thor"], correct: 1, diff: "medio" },
+        { q: "Qual banda britânica lançou o álbum clássico 'Abbey Road'?", options: ["Queen", "The Beatles", "The Rolling Stones", "Led Zeppelin"], correct: 1, diff: "medio" },
+        { q: "Qual a série de TV sul-coreana mais assistida da história da Netflix?", options: ["Round 6 (Squid Game)", "All of Us Are Dead", "Goblin", "Vicenzo"], correct: 0, diff: "medio" },
+        { q: "Qual filme foi o primeiro em língua não-inglesa a vencer o Oscar de Melhor Filme?", options: ["O Tigre e o Dragão", "Parasita", "Roma", "A Vida é Bela"], correct: 1, diff: "dificil" },
+        { q: "Qual ator interpretou o Coringa no filme 'O Cavaleiro das Trevas' (2008)?", options: ["Joaquin Phoenix", "Jared Leto", "Heath Ledger", "Jack Nicholson"], correct: 2, diff: "dificil" },
+        { q: "Qual o nome do reino fictício onde se passa a história de 'Black Panther'?", options: ["Genovia", "Wakanda", "Zamunda", "Sokovia"], correct: 1, diff: "dificil" },
+        { q: "Quem dirigiu os clássicos do cinema 'Tubarão', 'E.T.' e 'Jurassic Park'?", options: ["Christopher Nolan", "Steven Spielberg", "James Cameron", "Quentin Tarantino"], correct: 1, diff: "dificil" }
+      ],
+      geografia: [
+        { q: "Qual é o maior país em extensão territorial do mundo?", options: ["Canadá", "China", "EUA", "Rússia"], correct: 3, diff: "facil" },
+        { q: "Qual é a capital oficial da Austrália?", options: ["Sydney", "Melbourne", "Camberra", "Brisbane"], correct: 2, diff: "facil" },
+        { q: "Em qual continente fica o Egito?", options: ["Ásia", "Europa", "África", "América"], correct: 2, diff: "facil" },
+        { q: "Qual é o maior oceano do planeta Terra?", options: ["Atlântico", "Índico", "Pacífico", "Ártico"], correct: 2, diff: "facil" },
+        { q: "Qual é a montanha mais alta do planeta acima do nível do mar?", options: ["K2", "Monte Everest", "Kilimanjaro", "Aconcágua"], correct: 1, diff: "medio" },
+        { q: "Qual é o menor país independente do mundo em área?", options: ["Mônaco", "Vaticano", "Nauru", "San Marino"], correct: 1, diff: "medio" },
+        { q: "Qual é a capital do Canadá?", options: ["Toronto", "Vancouver", "Montreal", "Ottawa"], correct: 3, diff: "medio" },
+        { q: "O Deserto do Saara fica localizado em qual continente?", options: ["Ásia", "África", "Oceania", "América do Sul"], correct: 1, diff: "medio" },
+        { q: "Qual o rio mais longo do mundo em extensão e volume de água?", options: ["Rio Nilo", "Rio Amazonas", "Rio Mississippi", "Rio Yangtzé"], correct: 1, diff: "dificil" },
+        { q: "Qual país possui o maior número de fusos horários cobrindo seu território?", options: ["Rússia", "França (incluindo territórios)", "EUA", "China"], correct: 1, diff: "dificil" },
+        { q: "Em qual país se localiza a fossa das Marianas, o ponto mais profundo dos oceanos?", options: ["Japão", "Filipinas", "Oceano Pacífico Norte", "Indonésia"], correct: 2, diff: "dificil" },
+        { q: "Qual estreito separa a Europa do continente Africano?", options: ["Estreito de Bering", "Estreito de Gibraltar", "Estreito de Bósforo", "Canal da Mancha"], correct: 1, diff: "dificil" }
+      ],
+      historia: [
+        { q: "Em que ano a esquadra de Pedro Álvares Cabral chegou ao Brasil?", options: ["1492", "1500", "1508", "1600"], correct: 1, diff: "facil" },
+        { q: "Quem foi o primeiro presidente dos Estados Unidos?", options: ["Abraham Lincoln", "Thomas Jefferson", "George Washington", "John Adams"], correct: 2, diff: "facil" },
+        { q: "A queda de qual muro em 1989 marcou simbolicamente o fim da Guerra Fria?", options: ["Muro de Berlim", "Bastilha", "Muralha da China", "Coliseu"], correct: 0, diff: "facil" },
+        { q: "Quem proclamou a Independência do Brasil em 1822?", options: ["Dom Pedro II", "Tiradentes", "Dom Pedro I", "Getúlio Vargas"], correct: 2, diff: "facil" },
+        { q: "Em que ano teve início a Segunda Guerra Mundial?", options: ["1914", "1939", "1945", "1918"], correct: 1, diff: "medio" },
+        { q: "A Revolução Francesa iniciou-se em 1789 com a queda de qual prisão/fortaleza?", options: ["Bastilha", "Torre de Londres", "Castelo de Sant'Ângelo", "Alcatraz"], correct: 0, diff: "medio" },
+        { q: "Em qual ano o homem pisou na Lua pela primeira vez na missão Apollo 11?", options: ["1965", "1969", "1972", "1959"], correct: 1, diff: "medio" },
+        { q: "Qual lei aboliu a escravidão no Brasil em 1888?", options: ["Lei Eusébio de Queirós", "Lei do Ventre Livre", "Lei Áurea", "Lei dos Sexagenários"], correct: 2, diff: "medio" },
+        { q: "O Tratado de Tordesilhas (1494) dividiu as terras descobertas entre quais dois países?", options: ["Espanha e Inglaterra", "Portugal e Espanha", "França e Portugal", "Holanda e Espanha"], correct: 1, diff: "dificil" },
+        { q: "A queda de Constantinopla em 1453 marcou o fim do:", options: ["Império Romano do Ocidente", "Império Bizantino", "Império Otomano", "Império Mongol"], correct: 1, diff: "dificil" },
+        { q: "Quem foi o líder militar e imperador francês do início do século XIX?", options: ["Luís XIV", "Napoleão Bonaparte", "Robespierre", "Carlos Magno"], correct: 1, diff: "dificil" },
+        { q: "Quem foi a única rainha governante do Egito Antigo famosa por suas alianças com Roma?", options: ["Nefertiti", "Cleópatra VII", "Hatshepsut", "Arsinoe"], correct: 1, diff: "dificil" }
+      ]
+    };
+
+    const categoriesConfig = {
+      artes: { name: "Artes", icon: "🎨", color: "#d946ef" },
+      ciencias: { name: "Ciências", icon: "🔬", color: "#10b981" },
+      esportes: { name: "Esportes", icon: "⚽", color: "#ef4444" },
+      entretenimento: { name: "Lazer", icon: "🎬", color: "#f59e0b" },
+      geografia: { name: "Geografia", icon: "🌎", color: "#3b82f6" },
+      historia: { name: "História", icon: "📜", color: "#eab308" },
+      coroa: { name: "Coroa Especial", icon: "👑", color: "#f59e0b" }
+    };
+
+    const categoriesList = ["artes", "ciencias", "esportes", "entretenimento", "geografia", "historia", "coroa"];
+
+    // Registro de perguntas já feitas por categoria (Para NUNCA repetir no mesmo ciclo)
+    let askedQuestionsIndices = {
+      artes: [],
+      ciencias: [],
+      esportes: [],
+      entretenimento: [],
+      geografia: [],
+      historia: []
+    };
+
+    // Estado Global da Aplicação
+    let gameState = {
+      coins: 250,
+      gems: 15,
+      score: 1250,
+      level: 5,
+      unlockedBadges: new Set(),
+      crownProgress: 0,
+      totalAnswered: 0,
+      correctAnswers: 0,
+      currentCategory: null,
+      currentQuestion: null,
+      currentDiffPts: 100,
+      isCrownChallenge: false,
+      isSpinning: false,
+      timerInterval: null,
+      timeLeft: 20,
+      activeMode: 'home',
+      blitzScore: 0,
+      onlineOppScore: 0
+    };
+
+    // Obter pergunta sem repetição na categoria
+    function getNextQuestionWithoutRepeat(catKey) {
+      const allCategoryQuestions = questionsDB[catKey] || questionsDB.artes;
+      let used = askedQuestionsIndices[catKey] || [];
+
+      // Se todas as perguntas da categoria já foram usadas, reinicia o ciclo
+      if (used.length >= allCategoryQuestions.length) {
+        askedQuestionsIndices[catKey] = [];
+        used = [];
+      }
+
+      // Filtra os índices que ainda NÃO foram sorteados
+      const availableIndices = [];
+      for (let i = 0; i < allCategoryQuestions.length; i++) {
+        if (!used.includes(i)) {
+          availableIndices.push(i);
+        }
+      }
+
+      // Seleciona um índice aleatório dentre os não repetidos
+      const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+      askedQuestionsIndices[catKey].push(randomIndex);
+
+      return {
+        question: allCategoryQuestions[randomIndex],
+        currentIndex: askedQuestionsIndices[catKey].length,
+        totalQuestions: allCategoryQuestions.length
+      };
+    }
+
+    const canvas = document.getElementById('wheel-canvas');
+    const ctx = canvas.getContext('2d');
+    const needleElem = document.getElementById('wheel-needle');
+    const numSectors = categoriesList.length;
+    const arcSize = (2 * Math.PI) / numSectors;
+
+    let currentRotation = 0;
+    let angularVelocity = 0;
+    let isSpinningPhysics = false;
+
+    // Desenhar a Roleta Física com Degradês e Pinos Físicos
+    function drawWheel() {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const radius = canvas.width / 2 - 12;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < numSectors; i++) {
+        const catKey = categoriesList[i];
+        const cat = categoriesConfig[catKey];
+        const angle = currentRotation + i * arcSize;
+
+        // Setor com Degradê Radiais de Profundidade
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, angle, angle + arcSize);
+        
+        const grad = ctx.createRadialGradient(centerX, centerY, 20, centerX, centerY, radius);
+        grad.addColorStop(0, '#1e293b');
+        grad.addColorStop(0.5, cat.color);
+        grad.addColorStop(1, cat.color);
+
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        // Texto e Ícones nos Setores
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(angle + arcSize / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 24px Fredoka, sans-serif';
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 6;
+        ctx.fillText(cat.icon, radius - 28, 8);
+        ctx.restore();
+      }
+
+      // Pinos Metálicos na Borda para efeito físico do ponteiro
+      for (let i = 0; i < numSectors * 2; i++) {
+        const pinAngle = currentRotation + i * (arcSize / 2);
+        const px = centerX + (radius - 6) * Math.cos(pinAngle);
+        const py = centerY + (radius - 6) * Math.sin(pinAngle);
+
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fill();
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      // Anel Metálico Central
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 48, 0, 2 * Math.PI);
+      ctx.fillStyle = '#0f172a';
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#f59e0b';
+      ctx.stroke();
+    }
+
+    drawWheel();
+
+    // Animação de Giro da Roleta com Física de Desaceleração
+    function spinWheelPhysics() {
+      if (isSpinningPhysics) return;
+      isSpinningPhysics = true;
+
+      document.getElementById('spin-btn').disabled = true;
+      document.getElementById('spin-spinner').classList.remove('hidden');
+
+      // Velocidade angular inicial aleatória + fricção gradual
+      angularVelocity = 0.35 + Math.random() * 0.25;
+      let lastPinIndex = -1;
+
+      function updatePhysics() {
+        if (angularVelocity > 0.002) {
+          angularVelocity *= 0.985; // Fricção
+          currentRotation += angularVelocity;
+
+          // Verificar colisão de pinos com o ponteiro do topo (-90 graus = 1.5 * Math.PI)
+          const normalizedAngle = (3.5 * Math.PI - (currentRotation % (2 * Math.PI))) % (2 * Math.PI);
+          const currentPinIndex = Math.floor(normalizedAngle / (arcSize / 2));
+
+          if (currentPinIndex !== lastPinIndex) {
+            sound.playWheelTick(angularVelocity * 10);
+            
+            // Defletir o ponteiro fisicamente
+            needleElem.style.transform = `rotate(${-18 * Math.min(angularVelocity * 8, 1)}deg)`;
+            setTimeout(() => {
+              needleElem.style.transform = 'rotate(0deg)';
+            }, 40);
+
+            lastPinIndex = currentPinIndex;
+          }
+
+          drawWheel();
+          requestAnimationFrame(updatePhysics);
+        } else {
+          isSpinningPhysics = false;
+          document.getElementById('spin-btn').disabled = false;
+          document.getElementById('spin-spinner').classList.add('hidden');
+
+          const normalizedAngle = (3.5 * Math.PI - (currentRotation % (2 * Math.PI))) % (2 * Math.PI);
+          const activeSectorIndex = Math.floor(normalizedAngle / arcSize) % numSectors;
+
+          const selectedCategory = categoriesList[activeSectorIndex];
+          onWheelStop(selectedCategory);
+        }
+      }
+
+      requestAnimationFrame(updatePhysics);
+    }
+
+    document.getElementById('spin-btn').onclick = spinWheelPhysics;
+
+    function onWheelStop(catKey) {
+      if (catKey === 'coroa') {
+        openCrownSelectionModal();
+      } else {
+        gameState.isCrownChallenge = false;
+        openQuestionModal(catKey);
+      }
+    }
+
+    // Modal e Pergunta Engine com Dificuldade Dinâmica
+    function openQuestionModal(catKey) {
+      gameState.currentCategory = catKey;
+      const catConfig = categoriesConfig[catKey];
+      
+      // Obtém pergunta sem repetição
+      const qData = getNextQuestionWithoutRepeat(catKey);
+      gameState.currentQuestion = qData.question;
+
+      const qCatIcon = document.getElementById('q-category-icon');
+      const qCatName = document.getElementById('q-category-name');
+      const qCatTitle = document.getElementById('q-category-title');
+      const questionText = document.getElementById('question-text');
+      const optionsContainer = document.getElementById('options-container');
+      const diffBadge = document.getElementById('q-difficulty-badge');
+      const progressCounter = document.getElementById('q-progress-counter');
+
+      qCatIcon.style.backgroundColor = catConfig.color;
+      qCatIcon.textContent = catConfig.icon;
+      qCatName.textContent = catConfig.name;
+
+      // Configuração de Dificuldade e Pontos
+      const diffMap = {
+        facil: { text: "🟢 FÁCIL (+100 pts)", colorClass: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", pts: 100 },
+        medio: { text: "🟡 MÉDIO (+150 pts)", colorClass: "bg-amber-500/20 text-amber-400 border-amber-500/30", pts: 150 },
+        dificil: { text: "🔴 DIFÍCIL (+200 pts)", colorClass: "bg-red-500/20 text-red-400 border-red-500/30", pts: 200 }
+      };
+
+      const currentDiff = diffMap[gameState.currentQuestion.diff || "facil"];
+      gameState.currentDiffPts = currentDiff.pts;
+      diffBadge.textContent = currentDiff.text;
+      diffBadge.className = `text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${currentDiff.colorClass}`;
+
+      progressCounter.textContent = `Pergunta ${qData.currentIndex} de ${qData.totalQuestions}`;
+
+      if (gameState.isCrownChallenge) {
+        qCatTitle.textContent = "DESAFIO DA COROA!";
+        qCatTitle.className = "text-lg font-extrabold text-amber-400 animate-pulse";
+      } else {
+        qCatTitle.textContent = "Pergunta da Categoria";
+        qCatTitle.className = "text-lg font-extrabold text-white";
+      }
+
+      questionText.textContent = gameState.currentQuestion.q;
+
+      optionsContainer.innerHTML = '';
+      gameState.currentQuestion.options.forEach((optText, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "option-btn w-full p-4 rounded-2xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 text-slate-100 font-bold text-left transition flex items-center justify-between btn-bounce";
+        btn.innerHTML = `
+          <span>${optText}</span>
+          <span class="w-7 h-7 rounded-full bg-slate-900 text-slate-400 text-xs flex items-center justify-center font-extrabold">${String.fromCharCode(65 + idx)}</span>
+        `;
+        btn.onclick = () => checkAnswer(idx, btn);
+        optionsContainer.appendChild(btn);
+      });
+
+      document.getElementById('question-modal').classList.remove('hidden');
+      startTimer(20);
+    }
+
+    function startTimer(seconds) {
+      clearInterval(gameState.timerInterval);
+      gameState.timeLeft = seconds;
+      updateTimerUI();
+
+      gameState.timerInterval = setInterval(() => {
+        gameState.timeLeft--;
+        updateTimerUI();
+
+        if (gameState.timeLeft <= 0) {
+          clearInterval(gameState.timerInterval);
+          sound.playWrong();
+          handleWrongAnswer();
+        }
+      }, 1000);
+    }
+
+    function updateTimerUI() {
+      const timerText = document.getElementById('timer-text');
+      const timerBar = document.getElementById('timer-bar');
+      timerText.textContent = `${gameState.timeLeft}s`;
+      const pct = (gameState.timeLeft / 20) * 100;
+      timerBar.style.width = `${Math.max(0, pct)}%`;
+    }
+
+    function checkAnswer(selectedIndex, clickedBtn) {
+      clearInterval(gameState.timerInterval);
+      const correctIdx = gameState.currentQuestion.correct;
+      const allBtns = document.querySelectorAll('.option-btn');
+      allBtns.forEach(b => b.disabled = true);
+
+      gameState.totalAnswered++;
+
+      if (selectedIndex === correctIdx) {
+        sound.playCorrect();
+        clickedBtn.className = "w-full p-4 rounded-2xl bg-emerald-500 border-2 border-emerald-400 text-slate-950 font-black text-left flex items-center justify-between shadow-lg";
+        
+        gameState.correctAnswers++;
+        gameState.score += gameState.currentDiffPts;
+        gameState.coins += Math.round(gameState.currentDiffPts / 10);
+        updateHeaderStats();
+
+        if (gameState.activeMode === 'blitz') {
+          gameState.blitzScore += gameState.currentDiffPts;
+        }
+
+        if (gameState.isCrownChallenge) {
+          gameState.unlockedBadges.add(gameState.currentCategory);
+          updateBadgesUI();
+          gameState.crownProgress = 0;
+        } else {
+          gameState.crownProgress = Math.min(3, gameState.crownProgress + 1);
+        }
+        updateCrownProgressUI();
+
+        setTimeout(() => {
+          document.getElementById('question-modal').classList.add('hidden');
+          if (gameState.crownProgress >= 3) {
+            openCrownSelectionModal();
+          }
+        }, 1400);
+
+      } else {
+        sound.playWrong();
+        clickedBtn.className = "w-full p-4 rounded-2xl bg-red-500 border-2 border-red-400 text-white font-black text-left flex items-center justify-between shadow-lg";
+        allBtns[correctIdx].className = "w-full p-4 rounded-2xl bg-emerald-500/30 border-2 border-emerald-400 text-emerald-300 font-bold text-left flex items-center justify-between";
+
+        handleWrongAnswer();
+      }
+    }
+
+    function handleWrongAnswer() {
+      gameState.crownProgress = 0;
+      updateCrownProgressUI();
+      setTimeout(() => {
+        document.getElementById('question-modal').classList.add('hidden');
+      }, 1600);
+    }
+
+    function openCrownSelectionModal() {
+      const remaining = categoriesList.filter(c => c !== 'coroa' && !gameState.unlockedBadges.has(c));
+      if (remaining.length === 0) {
+        sound.playFanfare();
+        showAlertModal("🏆 VITÓRIA SUPREMA!", "Você conquistou todos os 6 personagens!");
+        return;
+      }
+
+      const grid = document.getElementById('crown-choices-grid');
+      grid.innerHTML = '';
+      remaining.forEach(catKey => {
+        const cat = categoriesConfig[catKey];
+        const btn = document.createElement('button');
+        btn.className = "p-4 rounded-2xl border border-slate-700 bg-slate-900/80 hover:border-amber-400 flex flex-col items-center justify-center transition btn-bounce";
+        btn.innerHTML = `<span class="text-3xl mb-1">${cat.icon}</span><span class="font-extrabold text-xs text-white">${cat.name}</span>`;
+        btn.onclick = () => {
+          document.getElementById('crown-modal').classList.add('hidden');
+          gameState.isCrownChallenge = true;
+          openQuestionModal(catKey);
+        };
+        grid.appendChild(btn);
+      });
+
+      document.getElementById('crown-modal').classList.remove('hidden');
+    }
+
+    // Matchmaking 1v1 Simulado
+    function startOnlineMatchmaking() {
+      const btn = document.getElementById('find-match-btn');
+      const box = document.getElementById('online-status-box');
+      const oppName = document.getElementById('opponent-name');
+      const oppAvatar = document.getElementById('opponent-avatar');
+
+      btn.disabled = true;
+      box.textContent = "Procurando jogador no servidor...";
+      
+      setTimeout(() => {
+        oppName.textContent = "Gabriel_QuizPro";
+        oppAvatar.innerHTML = `<span class="text-3xl">⚔️</span>`;
+        box.textContent = "Partida Encontrada! Rodada em andamento...";
+        
+        // Simulação de placar do oponente
+        let oppScore = 0;
+        const interval = setInterval(() => {
+          oppScore += Math.floor(Math.random() * 120);
+          document.getElementById('online-opp-score').textContent = `${oppScore} pts`;
+          if (oppScore >= 500) {
+            clearInterval(interval);
+            box.textContent = "Fim da Partida 1v1! " + (gameState.score > oppScore ? "Você venceu! 🎉" : "Oponente venceu!");
+            btn.disabled = false;
+          }
+        }, 1500);
+
+      }, 2000);
+    }
+
+    // Modo Blitz 60s
+    function startBlitzGame() {
+      gameState.activeMode = 'blitz';
+      openQuestionModal('artes');
+    }
+
+    // Navegação de Abas do Portal
+    function switchTab(tabId) {
+      document.querySelectorAll('.portal-view').forEach(v => v.classList.add('hidden'));
+      document.querySelectorAll('.nav-tab-btn').forEach(b => {
+        b.classList.remove('text-amber-400', 'bg-amber-500/10', 'border', 'border-amber-500/30');
+        b.classList.add('text-slate-400');
+      });
+
+      const activeView = document.getElementById(`view-${tabId}`);
+      if (activeView) activeView.classList.remove('hidden');
+
+      const activeBtn = document.getElementById(`tab-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-slate-400');
+        activeBtn.classList.add('text-amber-400', 'bg-amber-500/10', 'border', 'border-amber-500/30');
+      }
+
+      if (tabId === 'wheel') drawWheel();
+    }
+
+    // Poderzinhos
+    document.getElementById('power-bomb').onclick = () => {
+      if (gameState.coins < 30) {
+        showAlertModal("Moedas Insuficientes", "Você precisa de 30 moedas para usar o 50:50.");
+        return;
+      }
+      gameState.coins -= 30;
+      updateHeaderStats();
+
+      const correctIdx = gameState.currentQuestion.correct;
+      const btns = document.querySelectorAll('.option-btn');
+      let count = 0;
+      btns.forEach((btn, idx) => {
+        if (idx !== correctIdx && count < 2) {
+          btn.style.visibility = 'hidden';
+          count++;
+        }
+      });
+    };
+
+    document.getElementById('power-time').onclick = () => {
+      if (gameState.coins < 20) {
+        showAlertModal("Moedas Insuficientes", "Você precisa de 20 moedas para +10s.");
+        return;
+      }
+      gameState.coins -= 20;
+      updateHeaderStats();
+      gameState.timeLeft += 10;
+      updateTimerUI();
+    };
+
+    function buyItem(type, cost) {
+      if (gameState.coins >= cost) {
+        gameState.coins -= cost;
+        updateHeaderStats();
+        showAlertModal("Item Comprado!", "Sua ajuda foi adicionada ao inventário com sucesso.");
+      } else {
+        showAlertModal("Moedas Insuficientes", "Ganhe mais partidas para comprar!");
+      }
+    }
+
+    function buyAvatar(avatarIcon, gemCost) {
+      if (gameState.gems >= gemCost) {
+        gameState.gems -= gemCost;
+        updateHeaderStats();
+        document.getElementById('player-avatar-icon').textContent = avatarIcon;
+        document.getElementById('profile-avatar-icon').textContent = avatarIcon;
+        showAlertModal("Avatar Desbloqueado!", "Novo ícone de perfil equipado.");
+      } else {
+        showAlertModal("Gemas Insuficientes", "Obtenha gemas completando desafios!");
+      }
+    }
+
+    function claimDailyReward() {
+      gameState.coins += 100;
+      gameState.gems += 5;
+      updateHeaderStats();
+      sound.playFanfare();
+      showAlertModal("Recompensa Diária!", "Você resgatou +100 Moedas e +5 Gemas!");
+      document.getElementById('daily-btn').disabled = true;
+      document.getElementById('daily-btn').classList.add('opacity-50');
+    }
+
+    function updateHeaderStats() {
+      document.getElementById('coins-display').textContent = gameState.coins;
+      document.getElementById('gems-display').textContent = gameState.gems;
+      document.getElementById('rank-user-score').textContent = `${gameState.score} pts`;
+      
+      // Atualizar perfil
+      document.getElementById('prof-stat-total').textContent = gameState.totalAnswered;
+      const acc = gameState.totalAnswered > 0 ? Math.round((gameState.correctAnswers / gameState.totalAnswered) * 100) : 0;
+      document.getElementById('prof-stat-acc').textContent = `${acc}%`;
+      document.getElementById('prof-stat-crowns').textContent = gameState.unlockedBadges.size;
+    }
+
+    function updateBadgesUI() {
+      document.querySelectorAll('.badge-slot').forEach(slot => {
+        const cat = slot.getAttribute('data-cat');
+        if (gameState.unlockedBadges.has(cat)) {
+          slot.classList.remove('grayscale', 'opacity-40');
+          slot.classList.add('ring-2', 'ring-amber-400');
+        }
+      });
+      document.getElementById('badge-count-text').textContent = `${gameState.unlockedBadges.size} / 6 Conquistados`;
+    }
+
+    function updateCrownProgressUI() {
+      const pct = (gameState.crownProgress / 3) * 100;
+      document.getElementById('crown-progress').style.width = `${pct}%`;
+      document.getElementById('crown-progress-text').textContent = `${gameState.crownProgress}/3 para Coroa`;
+    }
+
+    function showAlertModal(title, msg) {
+      document.getElementById('alert-title').textContent = title;
+      document.getElementById('alert-msg').textContent = msg;
+      document.getElementById('alert-modal').classList.remove('hidden');
+    }
+
+    function closeAlertModal() {
+      document.getElementById('alert-modal').classList.add('hidden');
+    }
+
+    // Toggle Som
+    document.getElementById('sound-toggle-btn').onclick = () => {
+      sound.enabled = !sound.enabled;
+      document.getElementById('sound-icon').className = sound.enabled ? "fa-solid fa-volume-high" : "fa-solid fa-volume-xmark";
+    };
+
+  </script>
+</body>
+</html>
