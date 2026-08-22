@@ -404,49 +404,124 @@
 
     </section>
 
-    <!-- VIEW 3: DUELO 1V1 ONLINE -->
+    <!-- VIEW 3: DUELO 1V1 ONLINE (DESAFIO COM CÓDIGO OU TREINO VS IA) -->
     <section id="view-online" class="portal-view w-full max-w-2xl flex flex-col items-center hidden">
       <div class="glass-card w-full rounded-3xl p-6 sm:p-8 text-center space-y-6 border border-cyan-500/30">
         
         <div class="flex items-center justify-center gap-3">
           <span class="w-3 h-3 rounded-full bg-cyan-400 animate-ping"></span>
-          <h2 class="text-2xl font-extrabold text-white">Matchmaking Online Ao Vivo</h2>
+          <h2 class="text-2xl font-extrabold text-white font-fredoka">Duelo 1v1 Online</h2>
         </div>
 
-        <!-- Arena VS -->
-        <div class="flex items-center justify-between my-6 px-4">
-          <!-- Jogador (Você) -->
-          <div class="flex flex-col items-center gap-2">
-            <div class="w-20 h-20 bg-gradient-to-tr from-amber-400 to-yellow-500 rounded-2xl flex items-center justify-center text-4xl shadow-lg border-2 border-amber-300">
-              👑
+        <p class="text-slate-300 text-xs sm:text-sm max-w-md mx-auto">
+          Desafie um amigo em tempo real através de um código de convite ou dispute uma partida de treino contra a IA!
+        </p>
+
+        <!-- SELEÇÃO DE MODO DE DESAFIO (CRIAR / ENTRAR / TREINO) -->
+        <div id="duel-setup-container" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Card Criar Sala de Desafio -->
+            <div class="bg-slate-900/90 border border-amber-500/40 rounded-2xl p-5 space-y-3 shadow-xl flex flex-col justify-between text-left">
+              <div>
+                <div class="flex items-center gap-2 text-amber-400 font-bold text-base mb-1">
+                  <i class="fa-solid fa-plus-circle text-lg"></i>
+                  <h3>Criar Desafio</h3>
+                </div>
+                <p class="text-slate-400 text-xs">Gere um código de 4 dígitos e envie para seu amigo entrar.</p>
+              </div>
+              <button onclick="createQuizDuelRoom()" class="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-key"></i> CRIAR SALA DE DESAFIO
+              </button>
             </div>
-            <span class="font-bold text-sm text-slate-200">Você (Jogador)</span>
-            <span id="online-user-score" class="text-xl font-black text-amber-400 font-mono">0 pts</span>
-          </div>
 
-          <!-- Ícone VS -->
-          <div class="w-14 h-14 bg-gradient-to-tr from-red-600 to-pink-600 rounded-full flex items-center justify-center text-white font-black text-xl shadow-xl border-2 border-white animate-pulse">
-            VS
-          </div>
-
-          <!-- Oponente -->
-          <div class="flex flex-col items-center gap-2">
-            <div id="opponent-avatar" class="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center text-4xl shadow-lg border-2 border-slate-700">
-              <i class="fa-solid fa-user-secret text-slate-500"></i>
+            <!-- Card Entrar com Código -->
+            <div class="bg-slate-900/90 border border-cyan-500/40 rounded-2xl p-5 space-y-3 shadow-xl flex flex-col justify-between text-left">
+              <div>
+                <div class="flex items-center gap-2 text-cyan-400 font-bold text-base mb-1">
+                  <i class="fa-solid fa-right-to-bracket text-lg"></i>
+                  <h3>Entrar com Código</h3>
+                </div>
+                <p class="text-slate-400 text-xs mb-2">Digite o código recebido do seu amigo.</p>
+                <input type="text" id="quiz-room-code-input" placeholder="Ex: 7429" maxlength="4" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-center text-lg font-black text-cyan-300 tracking-widest uppercase focus:border-cyan-400 outline-none font-mono">
+              </div>
+              <button onclick="joinQuizDuelRoom()" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xs sm:text-sm shadow-lg transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-plug"></i> CONECTAR À SALA
+              </button>
             </div>
-            <span id="opponent-name" class="font-bold text-sm text-slate-400">Procurando...</span>
-            <span id="online-opp-score" class="text-xl font-black text-cyan-400 font-mono">0 pts</span>
+          </div>
+
+          <!-- Botão Treino Rápido vs IA -->
+          <div class="pt-2">
+            <button onclick="startAiDuelTraining()" class="w-full py-3.5 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white font-bold text-xs sm:text-sm rounded-2xl transition flex items-center justify-center gap-2 cursor-pointer">
+              <i class="fa-solid fa-robot text-amber-400"></i> Treino Rápido Solo vs IA (Sem Amigo no Momento)
+            </button>
           </div>
         </div>
 
-        <!-- Caixa de Status da Partida -->
-        <div id="online-status-box" class="p-4 bg-slate-900/80 rounded-2xl border border-slate-800 text-sm text-slate-300 font-mono">
-          Clique abaixo para encontrar um oponente em tempo real.
+        <!-- LOBBY DA SALA DE DESAFIO ATIVA (HIDDEN INICIALMENTE) -->
+        <div id="duel-active-lobby" class="hidden bg-slate-950/90 border border-cyan-500/50 rounded-2xl p-5 shadow-2xl space-y-5 text-left">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div>
+              <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Código do Desafio</span>
+              <div class="flex items-center gap-2">
+                <span id="duel-room-code-badge" class="font-mono font-black text-3xl text-amber-400 tracking-widest">----</span>
+                <button onclick="copyQuizDuelCode()" class="text-xs text-amber-300 hover:text-white px-2 py-1 bg-slate-800 rounded-lg border border-slate-700 cursor-pointer" title="Copiar código">
+                  <i class="fa-solid fa-copy mr-1"></i> Copiar
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span id="duel-room-status-pill" class="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full text-xs font-bold animate-pulse">
+                Aguardando Convidado...
+              </span>
+              <button onclick="leaveQuizDuelRoom()" class="px-3 py-1 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white rounded-xl text-xs font-bold border border-rose-500/30 transition cursor-pointer">
+                Sair
+              </button>
+            </div>
+          </div>
+
+          <!-- Arena VS no Lobby / Partida -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div id="duel-host-card" class="bg-slate-900 border border-slate-700 rounded-xl p-3 flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <span class="text-2xl">👑</span>
+                <div>
+                  <p class="text-xs font-bold text-white" id="duel-host-name">Você (Criador)</p>
+                  <p id="duel-host-score" class="text-sm font-mono font-black text-amber-400">0 pts</p>
+                </div>
+              </div>
+              <span id="duel-host-badge" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                Conectado ✅
+              </span>
+            </div>
+
+            <div id="duel-guest-card" class="bg-slate-900 border border-slate-700 rounded-xl p-3 flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <span class="text-2xl" id="duel-guest-icon">⚔️</span>
+                <div>
+                  <p class="text-xs font-bold text-white" id="duel-guest-name">Aguardando Amigo...</p>
+                  <p id="duel-guest-score" class="text-sm font-mono font-black text-cyan-400">0 pts</p>
+                </div>
+              </div>
+              <span id="duel-guest-badge" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                Aguardando...
+              </span>
+            </div>
+          </div>
+
+          <!-- Caixa de Status da Partida / Controles -->
+          <div class="space-y-3 pt-2 border-t border-slate-800">
+            <p id="duel-instructions-msg" class="text-xs text-slate-300 text-center">
+              Compartilhe o código com seu amigo. Quando ele entrar, o desafio pode começar!
+            </p>
+
+            <button id="start-duel-btn" onclick="startActiveQuizDuel()" class="hidden w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-base rounded-2xl shadow-xl transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+              <i class="fa-solid fa-play"></i> INICIAR DUELO DE PERGUNTAS 🚀
+            </button>
+          </div>
         </div>
 
-        <button id="find-match-btn" onclick="startOnlineMatchmaking()" class="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold text-lg rounded-2xl shadow-xl border-b-4 border-blue-800 btn-bounce">
-          <i class="fa-solid fa-magnifying-glass mr-2"></i> BUSCAR ADVERSÁRIO ONLINE
-        </button>
       </div>
     </section>
 
@@ -1318,34 +1393,387 @@
       document.getElementById('crown-modal').classList.remove('hidden');
     }
 
-    // Matchmaking 1v1 Simulado
-    function startOnlineMatchmaking() {
-      const btn = document.getElementById('find-match-btn');
-      const box = document.getElementById('online-status-box');
-      const oppName = document.getElementById('opponent-name');
-      const oppAvatar = document.getElementById('opponent-avatar');
+    // --- DUELO 1V1 ONLINE COM CÓDIGO DE CONVITE E SINCRONIZAÇÃO EM TEMPO REAL ---
+    const quizDuelChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('quiz_duel_channel') : null;
+    window.quizLocalUid = window.quizLocalUid || ('usr_' + Math.random().toString(36).substring(2, 9));
 
-      btn.disabled = true;
-      box.textContent = "Procurando jogador no servidor...";
-      
+    window.quizDuelState = {
+      roomCode: null,
+      isHost: false,
+      playerRole: 'host',
+      roomData: null,
+      duelQuestions: [],
+      currentRound: 0,
+      myDuelScore: 0,
+      oppDuelScore: 0,
+      isAiMode: false,
+      aiInterval: null
+    };
+
+    if (quizDuelChannel) {
+      quizDuelChannel.onmessage = (e) => {
+        if (e.data && e.data.type === 'QUIZ_DUEL_UPDATE' && window.quizDuelState.roomCode === e.data.code) {
+          applyQuizDuelRoomUpdate(e.data.roomData);
+        }
+      };
+    }
+
+    function broadcastQuizDuel(code, roomData) {
+      roomData.lastUpdated = Date.now();
+      window.quizDuelState.roomData = roomData;
+      localStorage.setItem('quiz_duel_' + code, JSON.stringify(roomData));
+      if (quizDuelChannel) {
+        quizDuelChannel.postMessage({ type: 'QUIZ_DUEL_UPDATE', code, roomData });
+      }
+    }
+
+    function generateDuelQuestions() {
+      const cats = ['historia', 'ciencia', 'esportes', 'artes', 'entretenimento', 'geografia'];
+      const questions = [];
+      cats.slice(0, 5).forEach(c => {
+        const list = questionsDatabase[c] || [];
+        if (list.length > 0) {
+          const randQ = list[Math.floor(Math.random() * list.length)];
+          questions.push({ catKey: c, qData: randQ });
+        }
+      });
+      return questions;
+    }
+
+    function applyQuizDuelRoomUpdate(room) {
+      if (!room) return;
+      window.quizDuelState.roomData = room;
+      window.quizDuelState.duelQuestions = room.questions || [];
+
+      const isHost = window.quizDuelState.isHost;
+      document.getElementById('duel-room-code-badge').textContent = room.code;
+      document.getElementById('duel-host-name').textContent = room.hostName || 'Você (Criador)';
+      document.getElementById('duel-host-score').textContent = `${room.hostScore || 0} pts`;
+
+      const guestCard = document.getElementById('duel-guest-card');
+      const guestName = document.getElementById('duel-guest-name');
+      const guestBadge = document.getElementById('duel-guest-badge');
+      const guestScore = document.getElementById('duel-guest-score');
+      const statusPill = document.getElementById('duel-room-status-pill');
+      const startBtn = document.getElementById('start-duel-btn');
+      const instructions = document.getElementById('duel-instructions-msg');
+
+      guestScore.textContent = `${room.guestScore || 0} pts`;
+
+      if (room.guestId) {
+        guestName.textContent = isHost ? (room.guestName || 'Amigo Convidado') : 'Você (Convidado)';
+        guestBadge.className = "text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+        guestBadge.textContent = "Conectado ✅";
+
+        statusPill.className = "px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full text-xs font-bold";
+        statusPill.textContent = "Ambos Conectados (Pronto!)";
+
+        if (isHost && room.status === 'ready') {
+          startBtn.classList.remove('hidden');
+          instructions.textContent = "Seu amigo entrou! Clique no botão abaixo para iniciar o Duelo de 5 Perguntas.";
+        } else if (!isHost && room.status === 'ready') {
+          startBtn.classList.add('hidden');
+          instructions.textContent = "Conectado com sucesso! Aguardando o Criador iniciar o Duelo.";
+        }
+      } else {
+        guestName.textContent = 'Aguardando Amigo...';
+        guestBadge.className = "text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700 animate-pulse";
+        guestBadge.textContent = "Aguardando...";
+        statusPill.className = "px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full text-xs font-bold animate-pulse";
+        statusPill.textContent = "Aguardando Convidado...";
+        startBtn.classList.add('hidden');
+        instructions.textContent = "Compartilhe o código com seu amigo. Quando ele entrar, o desafio pode começar!";
+      }
+
+      if (room.status === 'playing' && gameState.activeMode !== 'duel') {
+        launchDuelQuestionsRound(0);
+      }
+    }
+
+    window.createQuizDuelRoom = function() {
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      const questions = generateDuelQuestions();
+
+      const initialRoom = {
+        code: code,
+        status: 'lobby',
+        hostId: window.quizLocalUid,
+        hostName: 'Jogador 1 (Host)',
+        guestId: null,
+        guestName: 'Aguardando...',
+        hostScore: 0,
+        guestScore: 0,
+        questions: questions,
+        lastUpdated: Date.now()
+      };
+
+      window.quizDuelState.roomCode = code;
+      window.quizDuelState.isHost = true;
+      window.quizDuelState.playerRole = 'host';
+      window.quizDuelState.myDuelScore = 0;
+      window.quizDuelState.oppDuelScore = 0;
+      window.quizDuelState.isAiMode = false;
+
+      broadcastQuizDuel(code, initialRoom);
+
+      document.getElementById('duel-setup-container').classList.add('hidden');
+      document.getElementById('duel-active-lobby').classList.remove('hidden');
+      applyQuizDuelRoomUpdate(initialRoom);
+
+      startDuelRoomPolling(code);
+      showToast(`Sala de Desafio #${code} criada! Envie o código ao seu amigo.`, 'success');
+    };
+
+    window.joinQuizDuelRoom = function() {
+      const input = document.getElementById('quiz-room-code-input');
+      const code = input ? input.value.trim().toUpperCase() : '';
+
+      if (code.length !== 4) {
+        showToast("Digite um código de convite de 4 dígitos!", 'error');
+        return;
+      }
+
+      const raw = localStorage.getItem('quiz_duel_' + code);
+      if (!raw) {
+        showToast("Sala não encontrada com esse código!", 'error');
+        return;
+      }
+
+      const room = JSON.parse(raw);
+      if (room.hostId === window.quizLocalUid) {
+        window.quizDuelState.isHost = true;
+        window.quizDuelState.playerRole = 'host';
+      } else if (!room.guestId || room.guestId === window.quizLocalUid) {
+        room.guestId = window.quizLocalUid;
+        room.guestName = 'Jogador 2 (Convidado)';
+        room.status = 'ready';
+        window.quizDuelState.isHost = false;
+        window.quizDuelState.playerRole = 'guest';
+        broadcastQuizDuel(code, room);
+      } else {
+        showToast("Esta sala já possui 2 jogadores conectados.", 'error');
+        return;
+      }
+
+      window.quizDuelState.roomCode = code;
+      window.quizDuelState.myDuelScore = 0;
+      window.quizDuelState.oppDuelScore = 0;
+      window.quizDuelState.isAiMode = false;
+
+      document.getElementById('duel-setup-container').classList.add('hidden');
+      document.getElementById('duel-active-lobby').classList.remove('hidden');
+      applyQuizDuelRoomUpdate(room);
+
+      startDuelRoomPolling(code);
+      showToast(`Conectado à Sala #${code}!`, 'success');
+    };
+
+    function startDuelRoomPolling(code) {
+      if (window.quizDuelInterval) clearInterval(window.quizDuelInterval);
+      window.quizDuelInterval = setInterval(() => {
+        if (window.quizDuelState.roomCode !== code) {
+          clearInterval(window.quizDuelInterval);
+          return;
+        }
+        const raw = localStorage.getItem('quiz_duel_' + code);
+        if (raw) {
+          try { applyQuizDuelRoomUpdate(JSON.parse(raw)); } catch(e) {}
+        }
+      }, 600);
+    }
+
+    window.copyQuizDuelCode = function() {
+      if (window.quizDuelState.roomCode) {
+        try { navigator.clipboard.writeText(window.quizDuelState.roomCode); } catch(e) {}
+        showToast(`Código ${window.quizDuelState.roomCode} copiado para a área de transferência!`, 'success');
+      }
+    };
+
+    window.leaveQuizDuelRoom = function() {
+      if (window.quizDuelInterval) clearInterval(window.quizDuelInterval);
+      window.quizDuelState = { roomCode: null, isHost: false, playerRole: 'host', roomData: null, duelQuestions: [], currentRound: 0, myDuelScore: 0, oppDuelScore: 0, isAiMode: false };
+      document.getElementById('duel-active-lobby').classList.add('hidden');
+      document.getElementById('duel-setup-container').classList.remove('hidden');
+      showToast("Você saiu da sala de desafio.", 'info');
+    };
+
+    window.startActiveQuizDuel = function() {
+      const code = window.quizDuelState.roomCode;
+      const room = window.quizDuelState.roomData;
+      if (!room) return;
+
+      room.status = 'playing';
+      broadcastQuizDuel(code, room);
+      launchDuelQuestionsRound(0);
+    };
+
+    window.startAiDuelTraining = function() {
+      const questions = generateDuelQuestions();
+      window.quizDuelState.roomCode = 'TREINO';
+      window.quizDuelState.isHost = true;
+      window.quizDuelState.playerRole = 'host';
+      window.quizDuelState.duelQuestions = questions;
+      window.quizDuelState.isAiMode = true;
+      window.quizDuelState.myDuelScore = 0;
+      window.quizDuelState.oppDuelScore = 0;
+
+      document.getElementById('duel-setup-container').classList.add('hidden');
+      document.getElementById('duel-active-lobby').classList.remove('hidden');
+      document.getElementById('duel-room-code-badge').textContent = 'IA-BOT';
+      document.getElementById('duel-host-name').textContent = 'Você';
+      document.getElementById('duel-guest-name').textContent = 'Gabriel (IA Treino)';
+      document.getElementById('duel-room-status-pill').textContent = 'Modo Treino Solo';
+
+      launchDuelQuestionsRound(0);
+    };
+
+    function launchDuelQuestionsRound(roundIdx) {
+      if (!window.quizDuelState.duelQuestions || roundIdx >= window.quizDuelState.duelQuestions.length) {
+        finishQuizDuel();
+        return;
+      }
+
+      gameState.activeMode = 'duel';
+      window.quizDuelState.currentRound = roundIdx;
+
+      const item = window.quizDuelState.duelQuestions[roundIdx];
+      gameState.currentCategory = item.catKey;
+      gameState.currentQuestion = item.qData;
+
+      const catConfig = categoriesConfig[item.catKey];
+      const qCatIcon = document.getElementById('q-category-icon');
+      const qCatName = document.getElementById('q-category-name');
+      const qCatTitle = document.getElementById('q-category-title');
+      const questionText = document.getElementById('question-text');
+      const optionsContainer = document.getElementById('options-container');
+      const diffBadge = document.getElementById('q-difficulty-badge');
+      const progressCounter = document.getElementById('q-progress-counter');
+
+      qCatIcon.style.backgroundColor = catConfig.color;
+      qCatIcon.textContent = catConfig.icon;
+      qCatName.textContent = catConfig.name;
+
+      const diffMap = {
+        facil: { text: "🟢 FÁCIL (+100 pts)", colorClass: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", pts: 100 },
+        medio: { text: "🟡 MÉDIO (+150 pts)", colorClass: "bg-amber-500/20 text-amber-400 border-amber-500/30", pts: 150 },
+        dificil: { text: "🔴 DIFÍCIL (+200 pts)", colorClass: "bg-red-500/20 text-red-400 border-red-500/30", pts: 200 }
+      };
+
+      const currentDiff = diffMap[item.qData.diff || "facil"];
+      gameState.currentDiffPts = currentDiff.pts;
+      diffBadge.textContent = currentDiff.text;
+      diffBadge.className = `text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${currentDiff.colorClass}`;
+
+      qCatTitle.textContent = `⚔️ DUELO 1V1 — RODADA ${roundIdx + 1} DE 5`;
+      qCatTitle.className = "text-lg font-black text-cyan-400 animate-pulse";
+      progressCounter.textContent = `Desafio de Velocidade & Pontos`;
+      questionText.textContent = item.qData.q;
+
+      optionsContainer.innerHTML = '';
+      item.qData.options.forEach((optText, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "option-btn w-full p-4 rounded-2xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 text-slate-100 font-bold text-left transition flex items-center justify-between btn-bounce";
+        btn.innerHTML = `
+          <span>${optText}</span>
+          <span class="w-7 h-7 rounded-full bg-slate-900 text-slate-400 text-xs flex items-center justify-center font-extrabold">${String.fromCharCode(65 + idx)}</span>
+        `;
+        btn.onclick = () => handleDuelCheckAnswer(idx, btn, roundIdx);
+        optionsContainer.appendChild(btn);
+      });
+
+      document.getElementById('question-modal').classList.remove('hidden');
+      startTimer(15);
+    }
+
+    function handleDuelCheckAnswer(selectedIndex, clickedBtn, roundIdx) {
+      clearInterval(gameState.timerInterval);
+      const correctIdx = gameState.currentQuestion.correct;
+      const allBtns = document.querySelectorAll('.option-btn');
+      allBtns.forEach(b => b.disabled = true);
+
+      let earnedPts = 0;
+      if (selectedIndex === correctIdx) {
+        sound.playCorrect();
+        clickedBtn.className = "w-full p-4 rounded-2xl bg-emerald-500 border-2 border-emerald-400 text-slate-950 font-black text-left flex items-center justify-between shadow-lg";
+        earnedPts = gameState.currentDiffPts + Math.round(gameState.timeLeft * 5); // Bônus por rapidez!
+        window.quizDuelState.myDuelScore += earnedPts;
+      } else {
+        sound.playWrong();
+        clickedBtn.className = "w-full p-4 rounded-2xl bg-red-500 border-2 border-red-400 text-white font-black text-left flex items-center justify-between shadow-lg";
+        if (allBtns[correctIdx]) {
+          allBtns[correctIdx].className = "w-full p-4 rounded-2xl bg-emerald-500/30 border-2 border-emerald-400 text-emerald-300 font-bold text-left flex items-center justify-between";
+        }
+      }
+
+      // Se for modo IA de treino, calcula pontuação da IA
+      if (window.quizDuelState.isAiMode) {
+        const aiCorrect = Math.random() > 0.35;
+        if (aiCorrect) {
+          window.quizDuelState.oppDuelScore += gameState.currentDiffPts;
+        }
+        document.getElementById('duel-host-score').textContent = `${window.quizDuelState.myDuelScore} pts`;
+        document.getElementById('duel-guest-score').textContent = `${window.quizDuelState.oppDuelScore} pts`;
+      } else {
+        // Sincroniza placar no quarto multiplayer
+        const code = window.quizDuelState.roomCode;
+        const room = window.quizDuelState.roomData;
+        if (room) {
+          if (window.quizDuelState.isHost) room.hostScore = window.quizDuelState.myDuelScore;
+          else room.guestScore = window.quizDuelState.myDuelScore;
+          broadcastQuizDuel(code, room);
+        }
+      }
+
       setTimeout(() => {
-        oppName.textContent = "Gabriel_QuizPro";
-        oppAvatar.innerHTML = `<span class="text-3xl">⚔️</span>`;
-        box.textContent = "Partida Encontrada! Rodada em andamento...";
-        
-        // Simulação de placar do oponente
-        let oppScore = 0;
-        const interval = setInterval(() => {
-          oppScore += Math.floor(Math.random() * 120);
-          document.getElementById('online-opp-score').textContent = `${oppScore} pts`;
-          if (oppScore >= 500) {
-            clearInterval(interval);
-            box.textContent = "Fim da Partida 1v1! " + (gameState.score > oppScore ? "Você venceu! 🎉" : "Oponente venceu!");
-            btn.disabled = false;
-          }
-        }, 1500);
+        document.getElementById('question-modal').classList.add('hidden');
+        launchDuelQuestionsRound(roundIdx + 1);
+      }, 1500);
+    }
 
-      }, 2000);
+    function finishQuizDuel() {
+      document.getElementById('question-modal').classList.add('hidden');
+      gameState.activeMode = 'wheel';
+
+      const isHost = window.quizDuelState.isHost;
+      const myScore = window.quizDuelState.myDuelScore;
+      let oppScore = 0;
+
+      if (window.quizDuelState.isAiMode) {
+        oppScore = window.quizDuelState.oppDuelScore;
+      } else if (window.quizDuelState.roomData) {
+        oppScore = isHost ? (window.quizDuelState.roomData.guestScore || 0) : (window.quizDuelState.roomData.hostScore || 0);
+      }
+
+      let title = "🤝 FIM DO DUELO!";
+      let msg = `Placar Final: Você (${myScore} pts) vs Oponente (${oppScore} pts). `;
+
+      if (myScore > oppScore) {
+        title = "🏆 VITÓRIA NO DUELO 1V1!";
+        msg += "Parabéns, você foi o grande campeão da disputa!";
+        sound.playFanfare();
+        triggerConfetti();
+        gameState.score += myScore;
+        gameState.coins += 50;
+        gameState.xp += 100;
+        updateHeaderStats();
+      } else if (myScore < oppScore) {
+        title = "⚔️ DERROTA NO DUELO!";
+        msg += "O oponente fez mais pontos desta vez. Tente uma revanche!";
+        sound.playWrong();
+      } else {
+        title = "⚡ EMPATE ÉPICO!";
+        msg += "Ambos jogaram muito e terminaram com a mesma pontuação!";
+        sound.playFanfare();
+      }
+
+      showAlertModal(title, msg);
+      document.getElementById('duel-instructions-msg').textContent = msg;
+    }
+
+    // Modo Blitz 60s
+    function startBlitzGame() {
+      gameState.activeMode = 'blitz';
+      openQuestionModal('artes');
     }
 
     // Modo Blitz 60s
