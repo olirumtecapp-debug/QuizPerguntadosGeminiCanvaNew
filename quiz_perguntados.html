@@ -1300,7 +1300,11 @@
         if (gameState.timeLeft <= 0) {
           clearInterval(gameState.timerInterval);
           sound.playWrong();
-          handleWrongAnswer();
+          if (gameState.activeMode === 'duel') {
+            handleDuelTimeout();
+          } else {
+            handleWrongAnswer();
+          }
         }
       }, 1000);
     }
@@ -1428,16 +1432,16 @@
     }
 
     function generateDuelQuestions() {
-      const cats = ['historia', 'ciencia', 'esportes', 'artes', 'entretenimento', 'geografia'];
+      const cats = ['historia', 'ciencias', 'esportes', 'artes', 'entretenimento', 'geografia'];
       const questions = [];
-      cats.slice(0, 5).forEach(c => {
-        const list = questionsDatabase[c] || [];
+      cats.forEach(c => {
+        const list = questionsDB[c] || [];
         if (list.length > 0) {
           const randQ = list[Math.floor(Math.random() * list.length)];
           questions.push({ catKey: c, qData: randQ });
         }
       });
-      return questions;
+      return questions.slice(0, 5);
     }
 
     function applyQuizDuelRoomUpdate(room) {
@@ -1724,6 +1728,30 @@
         }
       }
 
+      setTimeout(() => {
+        document.getElementById('question-modal').classList.add('hidden');
+        launchDuelQuestionsRound(roundIdx + 1);
+      }, 1500);
+    }
+
+    function handleDuelTimeout() {
+      const correctIdx = gameState.currentQuestion.correct;
+      const allBtns = document.querySelectorAll('.option-btn');
+      allBtns.forEach(b => b.disabled = true);
+      if (allBtns[correctIdx]) {
+        allBtns[correctIdx].className = "w-full p-4 rounded-2xl bg-emerald-500/30 border-2 border-emerald-400 text-emerald-300 font-bold text-left flex items-center justify-between";
+      }
+
+      if (window.quizDuelState.isAiMode) {
+        const aiCorrect = Math.random() > 0.4;
+        if (aiCorrect) {
+          window.quizDuelState.oppDuelScore += (gameState.currentDiffPts || 100);
+        }
+        document.getElementById('duel-host-score').textContent = `${window.quizDuelState.myDuelScore} pts`;
+        document.getElementById('duel-guest-score').textContent = `${window.quizDuelState.oppDuelScore} pts`;
+      }
+
+      const roundIdx = window.quizDuelState.currentRound || 0;
       setTimeout(() => {
         document.getElementById('question-modal').classList.add('hidden');
         launchDuelQuestionsRound(roundIdx + 1);
