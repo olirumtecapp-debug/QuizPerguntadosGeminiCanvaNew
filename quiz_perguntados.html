@@ -11,6 +11,12 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
+  <!-- Supabase Realtime para Salas Online Globais -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- PeerJS para Salas Online P2P WebRTC sem servidor -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  
   <!-- Google Fonts: Fredoka & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1397,7 +1403,18 @@
       document.getElementById('crown-modal').classList.remove('hidden');
     }
 
-    // --- DUELO 1V1 ONLINE COM CÓDIGO DE CONVITE E SINCRONIZAÇÃO EM TEMPO REAL ---
+    // --- DUELO 1V1 ONLINE COM CÓDIGO DE CONVITE E SINCRONIZAÇÃO EM TEMPO REAL (SUPABASE REALTIME + WEBRTC P2P) ---
+    const SUPABASE_URL = 'https://duklpyvlpsboifxqgxua.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable___VakHTQI7tUQPtPvxJ4ug_GgVUuGwb';
+    let supabaseClient = null;
+    try {
+      if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+    } catch(e) {
+      console.warn('Supabase Realtime init:', e);
+    }
+
     const quizDuelChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('quiz_duel_channel') : null;
     window.quizLocalUid = window.quizLocalUid || ('usr_' + Math.random().toString(36).substring(2, 9));
 
@@ -1414,6 +1431,12 @@
       aiInterval: null
     };
 
+    window.quizSupabaseChannel = null;
+    window.quizP2P = {
+      peer: null,
+      conn: null
+    };
+
     if (quizDuelChannel) {
       quizDuelChannel.onmessage = (e) => {
         if (e.data && e.data.type === 'QUIZ_DUEL_UPDATE' && window.quizDuelState.roomCode === e.data.code) {
@@ -1425,9 +1448,23 @@
     function broadcastQuizDuel(code, roomData) {
       roomData.lastUpdated = Date.now();
       window.quizDuelState.roomData = roomData;
-      localStorage.setItem('quiz_duel_' + code, JSON.stringify(roomData));
+      try { localStorage.setItem('quiz_duel_' + code, JSON.stringify(roomData)); } catch(e) {}
       if (quizDuelChannel) {
-        quizDuelChannel.postMessage({ type: 'QUIZ_DUEL_UPDATE', code, roomData });
+        try { quizDuelChannel.postMessage({ type: 'QUIZ_DUEL_UPDATE', code, roomData }); } catch(e) {}
+      }
+      if (window.quizSupabaseChannel) {
+        try {
+          window.quizSupabaseChannel.send({
+            type: 'broadcast',
+            event: 'ROOM_UPDATE',
+            payload: { room: roomData }
+          });
+        } catch(e) {}
+      }
+      if (window.quizP2P.conn && window.quizP2P.conn.open) {
+        try {
+          window.quizP2P.conn.send({ type: 'ROOM_UPDATE', room: roomData });
+        } catch(e) {}
       }
     }
 
@@ -1518,6 +1555,103 @@
       window.quizDuelState.oppDuelScore = 0;
       window.quizDuelState.isAiMode = false;
 
+      // 1. Inicia Supabase Realtime Channel para o Host
+      if (window.quizSupabaseChannel && supabaseClient) {
+        try { supabaseClient.removeChannel(window.quizSupabaseChannel); } catch(e) {}
+      }
+      if (supabaseClient) {
+        window.quizSupabaseChannel = supabaseClient.channel('quiz_room_' + code, {
+          config: { broadcast: { self: false } }
+        });
+
+        window.quizSupabaseChannel
+          .on('broadcast', { event: 'GUEST_JOIN' }, ({ payload }) => {
+            console.log('[HOST REALTIME] Convidado entrou via nuvem:', payload);
+            const room = window.quizDuelState.roomData;
+            if (room) {
+              room.guestId = payload.guestId || 'guest_online';
+              room.guestName = payload.guestName || 'Jogador 2 (Convidado)';
+              room.status = 'ready';
+              broadcastQuizDuel(code, room);
+              applyQuizDuelRoomUpdate(room);
+
+              window.quizSupabaseChannel.send({
+                type: 'broadcast',
+                event: 'ROOM_STATE',
+                payload: { room: room }
+              });
+            }
+          })
+          .on('broadcast', { event: 'GUEST_SCORE' }, ({ payload }) => {
+            const room = window.quizDuelState.roomData;
+            if (room) {
+              room.guestScore = payload.score;
+              window.quizDuelState.oppDuelScore = payload.score;
+              document.getElementById('duel-guest-score').textContent = `${payload.score} pts`;
+            }
+          })
+          .on('broadcast', { event: 'GUEST_LEAVE' }, () => {
+            const room = window.quizDuelState.roomData;
+            if (room && room.status !== 'playing') {
+              room.guestId = null;
+              room.guestName = 'Aguardando...';
+              room.status = 'lobby';
+              broadcastQuizDuel(code, room);
+              applyQuizDuelRoomUpdate(room);
+            }
+          })
+          .subscribe((status) => {
+            console.log('[HOST REALTIME] Status:', status);
+          });
+      }
+
+      // 2. Fallback PeerJS WebRTC
+      if (window.quizP2P.peer) {
+        try { window.quizP2P.peer.destroy(); } catch(e) {}
+      }
+      const hostPeerId = 'quiz-duel-room-' + code;
+      try {
+        if (typeof Peer !== 'undefined') {
+          window.quizP2P.peer = new Peer(hostPeerId, {
+            config: {
+              iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
+              ]
+            }
+          });
+
+          window.quizP2P.peer.on('connection', (conn) => {
+            window.quizP2P.conn = conn;
+            conn.on('open', () => {
+              conn.send({ type: 'ROOM_UPDATE', room: window.quizDuelState.roomData });
+            });
+            conn.on('data', (data) => {
+              if (!data) return;
+              if (data.type === 'GUEST_JOIN') {
+                const room = window.quizDuelState.roomData;
+                if (room) {
+                  room.guestId = data.guestId || 'guest_p2p';
+                  room.guestName = data.guestName || 'Jogador 2 (Convidado)';
+                  room.status = 'ready';
+                  broadcastQuizDuel(code, room);
+                  applyQuizDuelRoomUpdate(room);
+                  try { conn.send({ type: 'ROOM_UPDATE', room: room }); } catch(e) {}
+                }
+              } else if (data.type === 'GUEST_SCORE') {
+                const room = window.quizDuelState.roomData;
+                if (room) {
+                  room.guestScore = data.score;
+                  window.quizDuelState.oppDuelScore = data.score;
+                  document.getElementById('duel-guest-score').textContent = `${data.score} pts`;
+                }
+              }
+            });
+          });
+        }
+      } catch(e) {}
+
       broadcastQuizDuel(code, initialRoom);
 
       document.getElementById('duel-setup-container').classList.add('hidden');
@@ -1537,39 +1671,168 @@
         return;
       }
 
-      const raw = localStorage.getItem('quiz_duel_' + code);
-      if (!raw) {
-        showToast("Sala não encontrada com esse código!", 'error');
-        return;
+      showToast("Conectando à sala do Host...", 'info');
+
+      // Limpa canais anteriores
+      if (window.quizSupabaseChannel && supabaseClient) {
+        try { supabaseClient.removeChannel(window.quizSupabaseChannel); } catch(e) {}
+      }
+      if (window.quizP2P.peer) {
+        try { window.quizP2P.peer.destroy(); } catch(e) {}
       }
 
-      const room = JSON.parse(raw);
-      if (room.hostId === window.quizLocalUid) {
-        window.quizDuelState.isHost = true;
-        window.quizDuelState.playerRole = 'host';
-      } else if (!room.guestId || room.guestId === window.quizLocalUid) {
-        room.guestId = window.quizLocalUid;
-        room.guestName = 'Jogador 2 (Convidado)';
-        room.status = 'ready';
-        window.quizDuelState.isHost = false;
-        window.quizDuelState.playerRole = 'guest';
-        broadcastQuizDuel(code, room);
-      } else {
-        showToast("Esta sala já possui 2 jogadores conectados.", 'error');
-        return;
+      let connected = false;
+
+      // 1. Conecta via Supabase Realtime (Global Cloud)
+      if (supabaseClient) {
+        window.quizSupabaseChannel = supabaseClient.channel('quiz_room_' + code, {
+          config: { broadcast: { self: false } }
+        });
+
+        window.quizSupabaseChannel
+          .on('broadcast', { event: 'ROOM_STATE' }, ({ payload }) => {
+            console.log('[GUEST REALTIME] Sala recebida do Host:', payload);
+            connected = true;
+            window.quizDuelState.roomCode = code;
+            window.quizDuelState.isHost = false;
+            window.quizDuelState.playerRole = 'guest';
+            window.quizDuelState.myDuelScore = 0;
+            window.quizDuelState.oppDuelScore = 0;
+            window.quizDuelState.isAiMode = false;
+
+            document.getElementById('duel-setup-container').classList.add('hidden');
+            document.getElementById('duel-active-lobby').classList.remove('hidden');
+            applyQuizDuelRoomUpdate(payload.room);
+            showToast(`Conectado à Sala #${code}!`, 'success');
+          })
+          .on('broadcast', { event: 'START_GAME' }, ({ payload }) => {
+            console.log('[GUEST REALTIME] Host iniciou o duelo!');
+            applyQuizDuelRoomUpdate(payload.room);
+            launchDuelQuestionsRound(0);
+          })
+          .on('broadcast', { event: 'HOST_SCORE' }, ({ payload }) => {
+            const room = window.quizDuelState.roomData || {};
+            room.hostScore = payload.score;
+            window.quizDuelState.oppDuelScore = payload.score;
+            document.getElementById('duel-host-score').textContent = `${payload.score} pts`;
+          })
+          .on('broadcast', { event: 'HOST_LEAVE' }, () => {
+            showToast("O Host encerrou a sala.", 'info');
+            leaveQuizDuelRoom();
+          })
+          .subscribe((status) => {
+            console.log('[GUEST REALTIME] Status:', status);
+            if (status === 'SUBSCRIBED') {
+              // Envia evento de entrada para o Host imediatamente
+              window.quizSupabaseChannel.send({
+                type: 'broadcast',
+                event: 'GUEST_JOIN',
+                payload: {
+                  guestId: window.quizLocalUid,
+                  guestName: 'Jogador 2 (Convidado)'
+                }
+              });
+            }
+          });
       }
 
-      window.quizDuelState.roomCode = code;
-      window.quizDuelState.myDuelScore = 0;
-      window.quizDuelState.oppDuelScore = 0;
-      window.quizDuelState.isAiMode = false;
+      // 2. Conecta via PeerJS WebRTC P2P (Fallback simultâneo)
+      if (typeof Peer !== 'undefined') {
+        try {
+          window.quizP2P.peer = new Peer({
+            config: {
+              iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
+              ]
+            }
+          });
 
-      document.getElementById('duel-setup-container').classList.add('hidden');
-      document.getElementById('duel-active-lobby').classList.remove('hidden');
-      applyQuizDuelRoomUpdate(room);
+          window.quizP2P.peer.on('open', (guestUid) => {
+            const hostPeerId = 'quiz-duel-room-' + code;
+            const conn = window.quizP2P.peer.connect(hostPeerId, { reliable: true });
+            window.quizP2P.conn = conn;
 
-      startDuelRoomPolling(code);
-      showToast(`Conectado à Sala #${code}!`, 'success');
+            conn.on('open', () => {
+              if (connected) return;
+              connected = true;
+              window.quizDuelState.roomCode = code;
+              window.quizDuelState.isHost = false;
+              window.quizDuelState.playerRole = 'guest';
+              window.quizDuelState.myDuelScore = 0;
+              window.quizDuelState.oppDuelScore = 0;
+              window.quizDuelState.isAiMode = false;
+
+              conn.send({
+                type: 'GUEST_JOIN',
+                guestId: guestUid,
+                guestName: 'Jogador 2 (Convidado)'
+              });
+
+              document.getElementById('duel-setup-container').classList.add('hidden');
+              document.getElementById('duel-active-lobby').classList.remove('hidden');
+              showToast(`Conectado à Sala #${code}!`, 'success');
+            });
+
+            conn.on('data', (data) => {
+              if (!data) return;
+              if (data.type === 'ROOM_UPDATE') {
+                applyQuizDuelRoomUpdate(data.room);
+              } else if (data.type === 'START_GAME') {
+                applyQuizDuelRoomUpdate(data.room);
+                launchDuelQuestionsRound(0);
+              } else if (data.type === 'HOST_SCORE') {
+                const room = window.quizDuelState.roomData || {};
+                room.hostScore = data.score;
+                window.quizDuelState.oppDuelScore = data.score;
+                document.getElementById('duel-host-score').textContent = `${data.score} pts`;
+              }
+            });
+          });
+        } catch(e) {}
+      }
+
+      // 3. Fallback localStorage (mesma máquina / aba)
+      setTimeout(() => {
+        if (connected) return;
+        const raw = localStorage.getItem('quiz_duel_' + code);
+        if (raw) {
+          try {
+            const room = JSON.parse(raw);
+            if (room.hostId === window.quizLocalUid) {
+              window.quizDuelState.isHost = true;
+              window.quizDuelState.playerRole = 'host';
+            } else if (!room.guestId || room.guestId === window.quizLocalUid) {
+              room.guestId = window.quizLocalUid;
+              room.guestName = 'Jogador 2 (Convidado)';
+              room.status = 'ready';
+              window.quizDuelState.isHost = false;
+              window.quizDuelState.playerRole = 'guest';
+              broadcastQuizDuel(code, room);
+            }
+
+            window.quizDuelState.roomCode = code;
+            window.quizDuelState.myDuelScore = 0;
+            window.quizDuelState.oppDuelScore = 0;
+            window.quizDuelState.isAiMode = false;
+
+            document.getElementById('duel-setup-container').classList.add('hidden');
+            document.getElementById('duel-active-lobby').classList.remove('hidden');
+            applyQuizDuelRoomUpdate(room);
+            startDuelRoomPolling(code);
+            showToast(`Conectado à Sala #${code}!`, 'success');
+            return;
+          } catch(e) {}
+        }
+
+        // Timeout se nenhuma camada conseguir conectar
+        setTimeout(() => {
+          if (!connected && !window.quizDuelState.roomCode) {
+            showToast("Sala não encontrada ou Host offline. Verifique o código digitado!", 'error');
+          }
+        }, 4000);
+      }, 500);
     };
 
     function startDuelRoomPolling(code) {
@@ -1595,6 +1858,26 @@
 
     window.leaveQuizDuelRoom = function() {
       if (window.quizDuelInterval) clearInterval(window.quizDuelInterval);
+      if (window.quizSupabaseChannel && supabaseClient) {
+        try {
+          window.quizSupabaseChannel.send({
+            type: 'broadcast',
+            event: window.quizDuelState.isHost ? 'HOST_LEAVE' : 'GUEST_LEAVE',
+            payload: {}
+          });
+          supabaseClient.removeChannel(window.quizSupabaseChannel);
+        } catch(e) {}
+      }
+      window.quizSupabaseChannel = null;
+
+      if (window.quizP2P.conn) {
+        try { window.quizP2P.conn.close(); } catch(e) {}
+      }
+      if (window.quizP2P.peer) {
+        try { window.quizP2P.peer.destroy(); } catch(e) {}
+      }
+      window.quizP2P.conn = null;
+      window.quizP2P.peer = null;
       window.quizDuelState = { roomCode: null, isHost: false, playerRole: 'host', roomData: null, duelQuestions: [], currentRound: 0, myDuelScore: 0, oppDuelScore: 0, isAiMode: false };
       document.getElementById('duel-active-lobby').classList.add('hidden');
       document.getElementById('duel-setup-container').classList.remove('hidden');
@@ -1608,6 +1891,20 @@
 
       room.status = 'playing';
       broadcastQuizDuel(code, room);
+
+      if (window.quizSupabaseChannel) {
+        try {
+          window.quizSupabaseChannel.send({
+            type: 'broadcast',
+            event: 'START_GAME',
+            payload: { room: room }
+          });
+        } catch(e) {}
+      }
+
+      if (window.quizP2P.conn && window.quizP2P.conn.open) {
+        try { window.quizP2P.conn.send({ type: 'START_GAME', room: room }); } catch(e) {}
+      }
       launchDuelQuestionsRound(0);
     };
 
@@ -1725,6 +2022,22 @@
           if (window.quizDuelState.isHost) room.hostScore = window.quizDuelState.myDuelScore;
           else room.guestScore = window.quizDuelState.myDuelScore;
           broadcastQuizDuel(code, room);
+        }
+        if (window.quizSupabaseChannel) {
+          try {
+            window.quizSupabaseChannel.send({
+              type: 'broadcast',
+              event: window.quizDuelState.isHost ? 'HOST_SCORE' : 'GUEST_SCORE',
+              payload: { score: window.quizDuelState.myDuelScore }
+            });
+          } catch(e) {}
+        }
+        if (window.quizP2P.conn && window.quizP2P.conn.open) {
+          if (window.quizDuelState.isHost) {
+            try { window.quizP2P.conn.send({ type: 'HOST_SCORE', score: window.quizDuelState.myDuelScore }); } catch(e) {}
+          } else {
+            try { window.quizP2P.conn.send({ type: 'GUEST_SCORE', score: window.quizDuelState.myDuelScore }); } catch(e) {}
+          }
         }
       }
 
