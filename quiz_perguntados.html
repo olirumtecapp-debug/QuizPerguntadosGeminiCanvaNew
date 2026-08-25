@@ -838,6 +838,111 @@
     </div>
   </div>
 
+  <!-- MODAL DE RESULTADO DETALHADO DO DUELO 1V1 -->
+  <div id="duel-result-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-4 z-50 hidden">
+    <div class="glass-modal w-full max-w-lg rounded-3xl p-6 text-center border-2 border-amber-400/40 shadow-2xl space-y-5">
+      
+      <!-- Cabeçalho com Ícone e Título -->
+      <div>
+        <div id="duel-res-icon" class="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl mx-auto shadow-2xl border-2 border-white/50 mb-3 pulse-glow-anim bg-amber-500">
+          🏆
+        </div>
+        <h2 id="duel-res-title" class="text-2xl sm:text-3xl font-black text-white font-fredoka tracking-wide">
+          VITÓRIA NO DUELO!
+        </h2>
+        <p id="duel-res-subtitle" class="text-xs sm:text-sm text-amber-300 font-bold mt-1">
+          Parabéns, você superou seu adversário!
+        </p>
+      </div>
+
+      <!-- Comparativo Lado a Lado dos Jogadores -->
+      <div class="grid grid-cols-2 gap-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800 text-left">
+        <!-- Jogador 1 (Você) -->
+        <div id="duel-res-my-card" class="bg-slate-900/90 rounded-xl p-3 border-2 border-emerald-500/50 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-black text-emerald-400 uppercase tracking-wider">VOCÊ</span>
+              <span id="duel-res-my-badge" class="text-[10px] bg-emerald-500/20 text-emerald-300 font-extrabold px-2 py-0.5 rounded-full border border-emerald-500/40">VENCEDOR</span>
+            </div>
+            <div class="space-y-1.5 text-xs text-slate-300">
+              <div class="flex justify-between">
+                <span class="text-slate-400">Acertos:</span>
+                <span id="duel-res-my-correct" class="font-bold text-white">0 / 5</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Tempo Total:</span>
+                <span id="duel-res-my-time" class="font-bold text-cyan-300">0.0s</span>
+              </div>
+            </div>
+          </div>
+          <div class="pt-3 border-t border-slate-800/80 mt-3 flex justify-between items-baseline">
+            <span class="text-[11px] text-slate-400 font-bold uppercase">Total:</span>
+            <span id="duel-res-my-score" class="text-lg font-black text-amber-400 font-mono">0 pts</span>
+          </div>
+        </div>
+
+        <!-- Jogador 2 (Oponente) -->
+        <div id="duel-res-opp-card" class="bg-slate-900/90 rounded-xl p-3 border border-slate-700/60 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span id="duel-res-opp-name" class="text-xs font-black text-slate-300 uppercase tracking-wider truncate">OPONENTE</span>
+              <span id="duel-res-opp-badge" class="text-[10px] bg-slate-800 text-slate-400 font-bold px-2 py-0.5 rounded-full">2º LUGAR</span>
+            </div>
+            <div class="space-y-1.5 text-xs text-slate-300">
+              <div class="flex justify-between">
+                <span class="text-slate-400">Acertos:</span>
+                <span id="duel-res-opp-correct" class="font-bold text-white">0 / 5</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Tempo Total:</span>
+                <span id="duel-res-opp-time" class="font-bold text-cyan-300">0.0s</span>
+              </div>
+            </div>
+          </div>
+          <div class="pt-3 border-t border-slate-800/80 mt-3 flex justify-between items-baseline">
+            <span class="text-[11px] text-slate-400 font-bold uppercase">Total:</span>
+            <span id="duel-res-opp-score" class="text-lg font-black text-slate-300 font-mono">0 pts</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Explicação do Resultado -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 text-xs sm:text-sm text-slate-300 flex items-center gap-2 text-left">
+        <i class="fa-solid fa-circle-info text-amber-400 text-base shrink-0"></i>
+        <span id="duel-res-explanation">Você acertou mais perguntas e respondeu com mais rapidez!</span>
+      </div>
+
+      <!-- Recompensas Ganhas -->
+      <div id="duel-res-rewards-box" class="flex items-center justify-center gap-6 py-2 bg-gradient-to-r from-amber-500/10 via-amber-500/20 to-amber-500/10 rounded-xl border border-amber-500/30">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🪙</span>
+          <div class="text-left">
+            <div class="text-[10px] text-slate-400 font-bold">MOEDAS</div>
+            <div id="duel-res-coins" class="text-sm font-black text-amber-400">+50</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">⭐</span>
+          <div class="text-left">
+            <div class="text-[10px] text-slate-400 font-bold">EXPERIÊNCIA</div>
+            <div id="duel-res-xp" class="text-sm font-black text-purple-400">+100 XP</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ações: Revanche e Voltar ao Menu -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+        <button onclick="requestQuizDuelRematch()" id="duel-rematch-btn" class="py-3.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black rounded-2xl shadow-xl shadow-emerald-500/20 transition active:scale-95 flex items-center justify-center gap-2 text-sm btn-bounce cursor-pointer">
+          <i class="fa-solid fa-rotate-right text-base"></i> JOGAR REVANCHE
+        </button>
+        <button onclick="closeDuelResultModal()" class="py-3.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold rounded-2xl border border-slate-700 transition active:scale-95 text-sm flex items-center justify-center gap-2 cursor-pointer">
+          <i class="fa-solid fa-house"></i> VOLTAR AO MENU
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <script>
     // Sound FX Engine usando Web Audio API
     class SoundEngine {
@@ -1596,8 +1701,15 @@
             if (room) {
               room.guestScore = payload.score;
               window.quizDuelState.oppDuelScore = payload.score;
+              if (payload.correct !== undefined) window.quizDuelState.oppDuelCorrect = payload.correct;
+              if (payload.totalTime !== undefined) window.quizDuelState.oppDuelTotalTime = payload.totalTime;
               document.getElementById('duel-guest-score').textContent = `${payload.score} pts`;
             }
+          })
+          .on('broadcast', { event: 'REQUEST_REMATCH' }, () => {
+            console.log('[HOST REALTIME] Convidado solicitou revanche!');
+            showToast("Convidado pediu revanche! Reiniciando...", 'info');
+            window.requestQuizDuelRematch();
           })
           .on('broadcast', { event: 'GUEST_LEAVE' }, () => {
             const room = window.quizDuelState.roomData;
@@ -1656,8 +1768,12 @@
                 if (room) {
                   room.guestScore = data.score;
                   window.quizDuelState.oppDuelScore = data.score;
+                  if (data.correct !== undefined) window.quizDuelState.oppDuelCorrect = data.correct;
+                  if (data.totalTime !== undefined) window.quizDuelState.oppDuelTotalTime = data.totalTime;
                   document.getElementById('duel-guest-score').textContent = `${data.score} pts`;
                 }
+              } else if (data.type === 'REQUEST_REMATCH') {
+                window.requestQuizDuelRematch();
               }
             });
           });
@@ -1712,6 +1828,10 @@
           window.quizDuelState.playerRole = 'guest';
           window.quizDuelState.myDuelScore = 0;
           window.quizDuelState.oppDuelScore = 0;
+          window.quizDuelState.myDuelCorrect = 0;
+          window.quizDuelState.oppDuelCorrect = 0;
+          window.quizDuelState.myDuelTotalTime = 0;
+          window.quizDuelState.oppDuelTotalTime = 0;
           window.quizDuelState.isAiMode = false;
 
           document.getElementById('duel-setup-container').classList.add('hidden');
@@ -1744,10 +1864,31 @@
             if (payload && (payload.room || payload)) applyQuizDuelRoomUpdate(payload.room || payload);
             launchDuelQuestionsRound(0);
           })
+          .on('broadcast', { event: 'START_REMATCH' }, ({ payload }) => {
+            console.log('[GUEST REALTIME] Host iniciou revanche!');
+            const room = (payload && payload.room) ? payload.room : payload;
+            if (room) {
+              window.quizDuelState.roomData = room;
+              window.quizDuelState.duelQuestions = room.questions || [];
+            }
+            window.quizDuelState.myDuelScore = 0;
+            window.quizDuelState.oppDuelScore = 0;
+            window.quizDuelState.myDuelCorrect = 0;
+            window.quizDuelState.oppDuelCorrect = 0;
+            window.quizDuelState.myDuelTotalTime = 0;
+            window.quizDuelState.oppDuelTotalTime = 0;
+            document.getElementById('duel-result-modal').classList.add('hidden');
+            document.getElementById('duel-host-score').textContent = '0 pts';
+            document.getElementById('duel-guest-score').textContent = '0 pts';
+            launchDuelQuestionsRound(0);
+            showToast("Revanche iniciada pelo Criador!", 'success');
+          })
           .on('broadcast', { event: 'HOST_SCORE' }, ({ payload }) => {
             const room = window.quizDuelState.roomData || {};
             room.hostScore = payload.score;
             window.quizDuelState.oppDuelScore = payload.score;
+            if (payload.correct !== undefined) window.quizDuelState.oppDuelCorrect = payload.correct;
+            if (payload.totalTime !== undefined) window.quizDuelState.oppDuelTotalTime = payload.totalTime;
             document.getElementById('duel-host-score').textContent = `${payload.score} pts`;
           })
           .on('broadcast', { event: 'HOST_LEAVE' }, () => {
@@ -2112,12 +2253,16 @@
       const allBtns = document.querySelectorAll('.option-btn');
       allBtns.forEach(b => b.disabled = true);
 
+      const timeSpent = Math.max(0.5, 15 - (gameState.timeLeft || 0));
+      window.quizDuelState.myDuelTotalTime = (window.quizDuelState.myDuelTotalTime || 0) + timeSpent;
+
       let earnedPts = 0;
       if (selectedIndex === correctIdx) {
         sound.playCorrect();
         clickedBtn.className = "w-full p-4 rounded-2xl bg-emerald-500 border-2 border-emerald-400 text-slate-950 font-black text-left flex items-center justify-between shadow-lg";
         earnedPts = gameState.currentDiffPts + Math.round(gameState.timeLeft * 5); // Bônus por rapidez!
         window.quizDuelState.myDuelScore += earnedPts;
+        window.quizDuelState.myDuelCorrect = (window.quizDuelState.myDuelCorrect || 0) + 1;
       } else {
         sound.playWrong();
         clickedBtn.className = "w-full p-4 rounded-2xl bg-red-500 border-2 border-red-400 text-white font-black text-left flex items-center justify-between shadow-lg";
@@ -2126,11 +2271,14 @@
         }
       }
 
-      // Se for modo IA de treino, calcula pontuação da IA
+      // Se for modo IA de treino, calcula pontuação e tempo da IA
       if (window.quizDuelState.isAiMode) {
         const aiCorrect = Math.random() > 0.35;
+        const aiTime = Math.floor(Math.random() * 5) + 3;
+        window.quizDuelState.oppDuelTotalTime = (window.quizDuelState.oppDuelTotalTime || 0) + aiTime;
         if (aiCorrect) {
           window.quizDuelState.oppDuelScore += gameState.currentDiffPts;
+          window.quizDuelState.oppDuelCorrect = (window.quizDuelState.oppDuelCorrect || 0) + 1;
         }
         document.getElementById('duel-host-score').textContent = `${window.quizDuelState.myDuelScore} pts`;
         document.getElementById('duel-guest-score').textContent = `${window.quizDuelState.oppDuelScore} pts`;
@@ -2143,20 +2291,25 @@
           else room.guestScore = window.quizDuelState.myDuelScore;
           broadcastQuizDuel(code, room);
         }
+        const scorePayload = {
+          score: window.quizDuelState.myDuelScore,
+          correct: window.quizDuelState.myDuelCorrect || 0,
+          totalTime: window.quizDuelState.myDuelTotalTime || 0
+        };
         if (window.quizSupabaseChannel) {
           try {
             window.quizSupabaseChannel.send({
               type: 'broadcast',
               event: window.quizDuelState.isHost ? 'HOST_SCORE' : 'GUEST_SCORE',
-              payload: { score: window.quizDuelState.myDuelScore }
+              payload: scorePayload
             });
           } catch(e) {}
         }
         if (window.quizP2P.conn && window.quizP2P.conn.open) {
           if (window.quizDuelState.isHost) {
-            try { window.quizP2P.conn.send({ type: 'HOST_SCORE', score: window.quizDuelState.myDuelScore }); } catch(e) {}
+            try { window.quizP2P.conn.send({ type: 'HOST_SCORE', ...scorePayload }); } catch(e) {}
           } else {
-            try { window.quizP2P.conn.send({ type: 'GUEST_SCORE', score: window.quizDuelState.myDuelScore }); } catch(e) {}
+            try { window.quizP2P.conn.send({ type: 'GUEST_SCORE', ...scorePayload }); } catch(e) {}
           }
         }
       }
@@ -2175,10 +2328,15 @@
         allBtns[correctIdx].className = "w-full p-4 rounded-2xl bg-emerald-500/30 border-2 border-emerald-400 text-emerald-300 font-bold text-left flex items-center justify-between";
       }
 
+      window.quizDuelState.myDuelTotalTime = (window.quizDuelState.myDuelTotalTime || 0) + 15;
+
       if (window.quizDuelState.isAiMode) {
         const aiCorrect = Math.random() > 0.4;
+        const aiTime = Math.floor(Math.random() * 5) + 4;
+        window.quizDuelState.oppDuelTotalTime = (window.quizDuelState.oppDuelTotalTime || 0) + aiTime;
         if (aiCorrect) {
           window.quizDuelState.oppDuelScore += (gameState.currentDiffPts || 100);
+          window.quizDuelState.oppDuelCorrect = (window.quizDuelState.oppDuelCorrect || 0) + 1;
         }
         document.getElementById('duel-host-score').textContent = `${window.quizDuelState.myDuelScore} pts`;
         document.getElementById('duel-guest-score').textContent = `${window.quizDuelState.oppDuelScore} pts`;
@@ -2196,40 +2354,215 @@
       gameState.activeMode = 'wheel';
 
       const isHost = window.quizDuelState.isHost;
-      const myScore = window.quizDuelState.myDuelScore;
+      const myScore = window.quizDuelState.myDuelScore || 0;
+      const myCorrect = window.quizDuelState.myDuelCorrect || 0;
+      const myTime = window.quizDuelState.myDuelTotalTime || 0;
+
       let oppScore = 0;
+      let oppCorrect = window.quizDuelState.oppDuelCorrect || 0;
+      let oppTime = window.quizDuelState.oppDuelTotalTime || 0;
+      let oppName = "Adversário";
 
       if (window.quizDuelState.isAiMode) {
-        oppScore = window.quizDuelState.oppDuelScore;
+        oppScore = window.quizDuelState.oppDuelScore || 0;
+        oppName = "Gabriel (IA)";
       } else if (window.quizDuelState.roomData) {
         oppScore = isHost ? (window.quizDuelState.roomData.guestScore || 0) : (window.quizDuelState.roomData.hostScore || 0);
+        oppName = isHost ? (window.quizDuelState.roomData.guestName || "Jogador 2") : (window.quizDuelState.roomData.hostName || "Host");
       }
 
-      let title = "🤝 FIM DO DUELO!";
-      let msg = `Placar Final: Você (${myScore} pts) vs Oponente (${oppScore} pts). `;
+      const iconEl = document.getElementById('duel-res-icon');
+      const titleEl = document.getElementById('duel-res-title');
+      const subEl = document.getElementById('duel-res-subtitle');
+      const expEl = document.getElementById('duel-res-explanation');
+      const myCard = document.getElementById('duel-res-my-card');
+      const oppCard = document.getElementById('duel-res-opp-card');
+      const myBadge = document.getElementById('duel-res-my-badge');
+      const oppBadge = document.getElementById('duel-res-opp-badge');
+      const coinsEl = document.getElementById('duel-res-coins');
+      const xpEl = document.getElementById('duel-res-xp');
+
+      // Preenche os dados comparativos
+      document.getElementById('duel-res-my-correct').textContent = `${myCorrect} / 5`;
+      document.getElementById('duel-res-my-time').textContent = `${myTime.toFixed(1)}s`;
+      document.getElementById('duel-res-my-score').textContent = `${myScore} pts`;
+
+      document.getElementById('duel-res-opp-name').textContent = oppName;
+      document.getElementById('duel-res-opp-correct').textContent = `${oppCorrect} / 5`;
+      document.getElementById('duel-res-opp-time').textContent = `${oppTime.toFixed(1)}s`;
+      document.getElementById('duel-res-opp-score').textContent = `${oppScore} pts`;
 
       if (myScore > oppScore) {
-        title = "🏆 VITÓRIA NO DUELO 1V1!";
-        msg += "Parabéns, você foi o grande campeão da disputa!";
-        sound.playFanfare();
-        triggerConfetti();
+        // VITÓRIA
+        iconEl.textContent = "🏆";
+        iconEl.className = "w-20 h-20 rounded-3xl flex items-center justify-center text-4xl mx-auto shadow-2xl border-2 border-white/50 mb-3 pulse-glow-anim bg-amber-500";
+        titleEl.textContent = "VITÓRIA NO DUELO!";
+        titleEl.className = "text-2xl sm:text-3xl font-black text-emerald-400 font-fredoka tracking-wide";
+        subEl.textContent = "Parabéns, você superou seu adversário!";
+        
+        if (myCorrect > oppCorrect) {
+          expEl.textContent = `Você acertou mais perguntas (${myCorrect} vs ${oppCorrect}) e acumulou mais pontos!`;
+        } else if (myCorrect === oppCorrect) {
+          expEl.textContent = `Ambos acertaram ${myCorrect}/5 perguntas, mas você respondeu com mais rapidez e garantiu o bônus!`;
+        } else {
+          expEl.textContent = `Você garantiu a vitória pela soma total de pontos e bônus de velocidade!`;
+        }
+
+        myCard.className = "bg-slate-900/90 rounded-xl p-3 border-2 border-emerald-500/80 shadow-lg shadow-emerald-500/10 flex flex-col justify-between";
+        oppCard.className = "bg-slate-900/90 rounded-xl p-3 border border-slate-700/60 flex flex-col justify-between opacity-80";
+        myBadge.className = "text-[10px] bg-emerald-500/20 text-emerald-300 font-extrabold px-2 py-0.5 rounded-full border border-emerald-500/40";
+        myBadge.textContent = "VENCEDOR 🏆";
+        oppBadge.className = "text-[10px] bg-slate-800 text-slate-400 font-bold px-2 py-0.5 rounded-full";
+        oppBadge.textContent = "2º LUGAR";
+
+        coinsEl.textContent = "+50";
+        xpEl.textContent = "+100 XP";
         gameState.score += myScore;
         gameState.coins += 50;
         gameState.xp += 100;
         updateHeaderStats();
+        sound.playFanfare();
+        triggerConfetti();
       } else if (myScore < oppScore) {
-        title = "⚔️ DERROTA NO DUELO!";
-        msg += "O oponente fez mais pontos desta vez. Tente uma revanche!";
+        // DERROTA
+        iconEl.textContent = "⚔️";
+        iconEl.className = "w-20 h-20 rounded-3xl flex items-center justify-center text-4xl mx-auto shadow-2xl border-2 border-white/50 mb-3 bg-red-600";
+        titleEl.textContent = "DERROTA NO DUELO!";
+        titleEl.className = "text-2xl sm:text-3xl font-black text-rose-400 font-fredoka tracking-wide";
+        subEl.textContent = "O adversário pontuou mais nesta rodada.";
+
+        if (oppCorrect > myCorrect) {
+          expEl.textContent = `O oponente acertou mais perguntas (${oppCorrect} vs ${myCorrect}). Peça uma revanche!`;
+        } else if (oppCorrect === myCorrect) {
+          expEl.textContent = `Ambos acertaram ${myCorrect}/5 perguntas, mas o adversário respondeu em menor tempo.`;
+        } else {
+          expEl.textContent = `O adversário somou mais pontos nesta rodada. Tente a revanche!`;
+        }
+
+        myCard.className = "bg-slate-900/90 rounded-xl p-3 border border-slate-700/60 flex flex-col justify-between opacity-80";
+        oppCard.className = "bg-slate-900/90 rounded-xl p-3 border-2 border-emerald-500/80 shadow-lg shadow-emerald-500/10 flex flex-col justify-between";
+        myBadge.className = "text-[10px] bg-slate-800 text-slate-400 font-bold px-2 py-0.5 rounded-full";
+        myBadge.textContent = "2º LUGAR";
+        oppBadge.className = "text-[10px] bg-emerald-500/20 text-emerald-300 font-extrabold px-2 py-0.5 rounded-full border border-emerald-500/40";
+        oppBadge.textContent = "VENCEDOR 🏆";
+
+        coinsEl.textContent = "+15";
+        xpEl.textContent = "+30 XP";
+        gameState.coins += 15;
+        gameState.xp += 30;
+        updateHeaderStats();
         sound.playWrong();
       } else {
-        title = "⚡ EMPATE ÉPICO!";
-        msg += "Ambos jogaram muito e terminaram com a mesma pontuação!";
+        // EMPATE
+        iconEl.textContent = "⚡";
+        iconEl.className = "w-20 h-20 rounded-3xl flex items-center justify-center text-4xl mx-auto shadow-2xl border-2 border-white/50 mb-3 bg-cyan-600";
+        titleEl.textContent = "EMPATE ÉPICO!";
+        titleEl.className = "text-2xl sm:text-3xl font-black text-cyan-300 font-fredoka tracking-wide";
+        subEl.textContent = "Disputa acirrada até o último segundo!";
+        expEl.textContent = `Ambos terminaram com exatamente a mesma pontuação (${myScore} pts)!`;
+
+        myCard.className = "bg-slate-900/90 rounded-xl p-3 border-2 border-cyan-500/50 flex flex-col justify-between";
+        oppCard.className = "bg-slate-900/90 rounded-xl p-3 border-2 border-cyan-500/50 flex flex-col justify-between";
+        myBadge.className = "text-[10px] bg-cyan-500/20 text-cyan-300 font-extrabold px-2 py-0.5 rounded-full";
+        myBadge.textContent = "EMPATE";
+        oppBadge.className = "text-[10px] bg-cyan-500/20 text-cyan-300 font-extrabold px-2 py-0.5 rounded-full";
+        oppBadge.textContent = "EMPATE";
+
+        coinsEl.textContent = "+30";
+        xpEl.textContent = "+60 XP";
+        gameState.coins += 30;
+        gameState.xp += 60;
+        updateHeaderStats();
         sound.playFanfare();
       }
 
-      showAlertModal(title, msg);
-      document.getElementById('duel-instructions-msg').textContent = msg;
+      // Restaura o botão de revanche
+      const rematchBtn = document.getElementById('duel-rematch-btn');
+      if (rematchBtn) {
+        rematchBtn.innerHTML = '<i class="fa-solid fa-rotate-right text-base"></i> JOGAR REVANCHE';
+        rematchBtn.disabled = false;
+      }
+
+      // Exibe o modal detalhado
+      document.getElementById('duel-result-modal').classList.remove('hidden');
     }
+
+    window.requestQuizDuelRematch = function() {
+      const rematchBtn = document.getElementById('duel-rematch-btn');
+      if (rematchBtn) {
+        rematchBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-base"></i> INICIANDO...';
+        rematchBtn.disabled = true;
+      }
+
+      // 1. Modo Treino IA
+      if (window.quizDuelState.isAiMode) {
+        document.getElementById('duel-result-modal').classList.add('hidden');
+        window.startAiDuelTraining();
+        return;
+      }
+
+      // 2. Multiplayer Host
+      if (window.quizDuelState.isHost) {
+        const newQuestions = generateDuelQuestions();
+        const code = window.quizDuelState.roomCode;
+        const room = window.quizDuelState.roomData || {};
+
+        room.questions = newQuestions;
+        room.hostScore = 0;
+        room.guestScore = 0;
+        room.status = 'playing';
+
+        window.quizDuelState.duelQuestions = newQuestions;
+        window.quizDuelState.myDuelScore = 0;
+        window.quizDuelState.oppDuelScore = 0;
+        window.quizDuelState.myDuelCorrect = 0;
+        window.quizDuelState.oppDuelCorrect = 0;
+        window.quizDuelState.myDuelTotalTime = 0;
+        window.quizDuelState.oppDuelTotalTime = 0;
+
+        broadcastQuizDuel(code, room);
+
+        if (window.quizSupabaseChannel) {
+          try {
+            window.quizSupabaseChannel.send({
+              type: 'broadcast',
+              event: 'START_REMATCH',
+              payload: { room: room }
+            });
+          } catch(e) {}
+        }
+
+        if (window.quizP2P.conn && window.quizP2P.conn.open) {
+          try { window.quizP2P.conn.send({ type: 'START_REMATCH', room: room }); } catch(e) {}
+        }
+
+        document.getElementById('duel-result-modal').classList.add('hidden');
+        document.getElementById('duel-host-score').textContent = '0 pts';
+        document.getElementById('duel-guest-score').textContent = '0 pts';
+        launchDuelQuestionsRound(0);
+        showToast("Nova rodada de Duelo iniciada!", 'success');
+      } else {
+        // 3. Multiplayer Convidado (solicita ao Host)
+        showToast("Solicitação de revanche enviada ao Criador!", 'info');
+        if (window.quizSupabaseChannel) {
+          try {
+            window.quizSupabaseChannel.send({
+              type: 'broadcast',
+              event: 'REQUEST_REMATCH',
+              payload: { guestId: window.quizLocalUid }
+            });
+          } catch(e) {}
+        }
+        if (window.quizP2P.conn && window.quizP2P.conn.open) {
+          try { window.quizP2P.conn.send({ type: 'REQUEST_REMATCH' }); } catch(e) {}
+        }
+      }
+    };
+
+    window.closeDuelResultModal = function() {
+      document.getElementById('duel-result-modal').classList.add('hidden');
+      leaveQuizDuelRoom();
+    };
 
     // Modo Blitz 60s
     function startBlitzGame() {
