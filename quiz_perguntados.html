@@ -1512,6 +1512,38 @@
     const SUPABASE_URL = 'https://duklpyvlpsboifxqgxua.supabase.co';
     const SUPABASE_KEY = 'sb_publishable___VakHTQI7tUQPtPvxJ4ug_GgVUuGwb';
     
+    async function ensureSupabaseClient() {
+      if (window.quizSupabaseClient) return window.quizSupabaseClient;
+
+      for (let attempt = 0; attempt < 20; attempt++) {
+        try {
+          const sb = window.supabase || (typeof supabase !== 'undefined' ? supabase : null);
+          if (sb && sb.createClient) {
+            window.quizSupabaseClient = sb.createClient(SUPABASE_URL, SUPABASE_KEY);
+            return window.quizSupabaseClient;
+          }
+        } catch(e) {}
+        await new Promise(r => setTimeout(r, 150));
+      }
+
+      try {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+        const sb = window.supabase || (typeof supabase !== 'undefined' ? supabase : null);
+        if (sb && sb.createClient) {
+          window.quizSupabaseClient = sb.createClient(SUPABASE_URL, SUPABASE_KEY);
+          return window.quizSupabaseClient;
+        }
+      } catch(e) {}
+
+      return null;
+    }
+
     function getSupabaseClient() {
       if (window.quizSupabaseClient) return window.quizSupabaseClient;
       try {
@@ -1645,7 +1677,7 @@
       }
     }
 
-    window.createQuizDuelRoom = function() {
+    window.createQuizDuelRoom = async function() {
       const code = Math.floor(1000 + Math.random() * 9000).toString();
       const questions = generateDuelQuestions();
 
@@ -1670,7 +1702,7 @@
       window.quizDuelState.isAiMode = false;
 
       // 1. Inicia Supabase Realtime Channel para o Host
-      const sbClient = getSupabaseClient();
+      const sbClient = await ensureSupabaseClient();
       if (window.quizSupabaseChannel && sbClient) {
         try { sbClient.removeChannel(window.quizSupabaseChannel); } catch(e) {}
       }
@@ -1812,7 +1844,7 @@
       showToast(`Sala de Desafio #${code} criada! Envie o código ao seu amigo.`, 'success');
     };
 
-    window.joinQuizDuelRoom = function() {
+    window.joinQuizDuelRoom = async function() {
       const input = document.getElementById('quiz-room-code-input');
       const code = input ? input.value.trim().toUpperCase() : '';
 
@@ -1821,9 +1853,15 @@
         return;
       }
 
-      showToast("Conectando à sala do Host...", 'info');
+      const joinBtn = document.querySelector('button[onclick="joinQuizDuelRoom()"]');
+      if (joinBtn) {
+        joinBtn.disabled = true;
+        joinBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> CONECTANDO...';
+      }
 
-      const sbClient = getSupabaseClient();
+      showToast(`Buscando sala #${code}...`, 'info');
+
+      const sbClient = await ensureSupabaseClient();
 
       // Limpa canais anteriores
       if (window.quizSupabaseChannel && sbClient) {
@@ -1835,33 +1873,37 @@
 
       let connected = false;
 
+      const finishConnecting = (roomPayload) => {
+        if (connected) return;
+        connected = true;
+        if (joinBtn) {
+          joinBtn.disabled = false;
+          joinBtn.innerHTML = '<i class="fa-solid fa-plug"></i> CONECTAR À SALA';
+        }
+        if (window.quizGuestRetryInterval) clearInterval(window.quizGuestRetryInterval);
+        console.log('[GUEST REALTIME] Conectado e configurado com sala:', roomPayload);
+        window.quizDuelState.roomCode = code;
+        window.quizDuelState.isHost = false;
+        window.quizDuelState.playerRole = 'guest';
+        window.quizDuelState.myDuelScore = 0;
+        window.quizDuelState.oppDuelScore = 0;
+        window.quizDuelState.myDuelCorrect = 0;
+        window.quizDuelState.oppDuelCorrect = 0;
+        window.quizDuelState.myDuelTotalTime = 0;
+        window.quizDuelState.oppDuelTotalTime = 0;
+        window.quizDuelState.isAiMode = false;
+
+        document.getElementById('duel-setup-container').classList.add('hidden');
+        document.getElementById('duel-active-lobby').classList.remove('hidden');
+        applyQuizDuelRoomUpdate(roomPayload);
+        showToast(`Conectado à Sala #${code}!`, 'success');
+      };
+
       // 1. Conecta via Supabase Realtime (Global Cloud)
       if (sbClient) {
         window.quizSupabaseChannel = sbClient.channel('quiz_room_' + code, {
           config: { broadcast: { self: false }, presence: { key: 'guest' } }
         });
-
-        const handleRoomState = (roomPayload) => {
-          if (connected) return;
-          connected = true;
-          if (window.quizGuestRetryInterval) clearInterval(window.quizGuestRetryInterval);
-          console.log('[GUEST REALTIME] Conectado e configurado com sala:', roomPayload);
-          window.quizDuelState.roomCode = code;
-          window.quizDuelState.isHost = false;
-          window.quizDuelState.playerRole = 'guest';
-          window.quizDuelState.myDuelScore = 0;
-          window.quizDuelState.oppDuelScore = 0;
-          window.quizDuelState.myDuelCorrect = 0;
-          window.quizDuelState.oppDuelCorrect = 0;
-          window.quizDuelState.myDuelTotalTime = 0;
-          window.quizDuelState.oppDuelTotalTime = 0;
-          window.quizDuelState.isAiMode = false;
-
-          document.getElementById('duel-setup-container').classList.add('hidden');
-          document.getElementById('duel-active-lobby').classList.remove('hidden');
-          applyQuizDuelRoomUpdate(roomPayload);
-          showToast(`Conectado à Sala #${code}!`, 'success');
-        };
 
         window.quizSupabaseChannel
           .on('presence', { event: 'sync' }, () => {
@@ -1871,16 +1913,16 @@
                 const hostPresence = pState.host[0];
                 if (hostPresence && hostPresence.room && !connected) {
                   console.log('[GUEST REALTIME] Host detectado via presence! Conectando...', hostPresence.room);
-                  handleRoomState(hostPresence.room);
+                  finishConnecting(hostPresence.room);
                 }
               }
             } catch(e) {}
           })
           .on('broadcast', { event: 'ROOM_STATE' }, ({ payload }) => {
-            if (payload && (payload.room || payload)) handleRoomState(payload.room || payload);
+            if (payload && (payload.room || payload)) finishConnecting(payload.room || payload);
           })
           .on('broadcast', { event: 'ROOM_UPDATE' }, ({ payload }) => {
-            if (payload && (payload.room || payload)) handleRoomState(payload.room || payload);
+            if (payload && (payload.room || payload)) finishConnecting(payload.room || payload);
           })
           .on('broadcast', { event: 'START_GAME' }, ({ payload }) => {
             console.log('[GUEST REALTIME] Host iniciou o duelo!');
@@ -1951,7 +1993,7 @@
           });
       }
 
-      // 2. Conecta via PeerJS WebRTC P2P (Fallback simultâneo)
+      // 2. Fallback PeerJS WebRTC P2P (Fallback simultâneo)
       if (typeof Peer !== 'undefined') {
         try {
           window.quizP2P.peer = new Peer({
@@ -1971,23 +2013,20 @@
 
             conn.on('open', () => {
               if (connected) return;
-              connected = true;
-              window.quizDuelState.roomCode = code;
-              window.quizDuelState.isHost = false;
-              window.quizDuelState.playerRole = 'guest';
-              window.quizDuelState.myDuelScore = 0;
-              window.quizDuelState.oppDuelScore = 0;
-              window.quizDuelState.isAiMode = false;
+              finishConnecting({
+                code: code,
+                status: 'ready',
+                hostName: 'Jogador 1 (Host)',
+                guestName: 'Você (Convidado)',
+                hostScore: 0,
+                guestScore: 0
+              });
 
               conn.send({
                 type: 'GUEST_JOIN',
                 guestId: guestUid,
                 guestName: 'Jogador 2 (Convidado)'
               });
-
-              document.getElementById('duel-setup-container').classList.add('hidden');
-              document.getElementById('duel-active-lobby').classList.remove('hidden');
-              showToast(`Conectado à Sala #${code}!`, 'success');
             });
 
             conn.on('data', (data) => {
@@ -2008,46 +2047,16 @@
         } catch(e) {}
       }
 
-      // 3. Fallback localStorage (mesma máquina / aba)
+      // Timeout se nenhuma camada conseguir conectar após 5s
       setTimeout(() => {
-        if (connected) return;
-        const raw = localStorage.getItem('quiz_duel_' + code);
-        if (raw) {
-          try {
-            const room = JSON.parse(raw);
-            if (room.hostId === window.quizLocalUid) {
-              window.quizDuelState.isHost = true;
-              window.quizDuelState.playerRole = 'host';
-            } else if (!room.guestId || room.guestId === window.quizLocalUid) {
-              room.guestId = window.quizLocalUid;
-              room.guestName = 'Jogador 2 (Convidado)';
-              room.status = 'ready';
-              window.quizDuelState.isHost = false;
-              window.quizDuelState.playerRole = 'guest';
-              broadcastQuizDuel(code, room);
-            }
-
-            window.quizDuelState.roomCode = code;
-            window.quizDuelState.myDuelScore = 0;
-            window.quizDuelState.oppDuelScore = 0;
-            window.quizDuelState.isAiMode = false;
-
-            document.getElementById('duel-setup-container').classList.add('hidden');
-            document.getElementById('duel-active-lobby').classList.remove('hidden');
-            applyQuizDuelRoomUpdate(room);
-            startDuelRoomPolling(code);
-            showToast(`Conectado à Sala #${code}!`, 'success');
-            return;
-          } catch(e) {}
-        }
-
-        // Timeout se nenhuma camada conseguir conectar
-        setTimeout(() => {
-          if (!connected && !window.quizDuelState.roomCode) {
-            showToast("Sala não encontrada ou Host offline. Verifique o código digitado!", 'error');
+        if (!connected && !window.quizDuelState.roomCode) {
+          if (joinBtn) {
+            joinBtn.disabled = false;
+            joinBtn.innerHTML = '<i class="fa-solid fa-plug"></i> CONECTAR À SALA';
           }
-        }, 3500);
-      }, 500);
+          showToast("Sala não encontrada ou Host offline. Verifique o código digitado!", 'error');
+        }
+      }, 5000);
     };
 
     function startDuelRoomPolling(code) {
