@@ -1406,13 +1406,19 @@
     // --- DUELO 1V1 ONLINE COM CÓDIGO DE CONVITE E SINCRONIZAÇÃO EM TEMPO REAL (SUPABASE REALTIME + WEBRTC P2P) ---
     const SUPABASE_URL = 'https://duklpyvlpsboifxqgxua.supabase.co';
     const SUPABASE_KEY = 'sb_publishable___VakHTQI7tUQPtPvxJ4ug_GgVUuGwb';
-    let supabaseClient = null;
-    try {
-      if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    function getSupabaseClient() {
+      if (window.quizSupabaseClient) return window.quizSupabaseClient;
+      try {
+        const sb = window.supabase || (typeof supabase !== 'undefined' ? supabase : null);
+        if (sb && sb.createClient) {
+          window.quizSupabaseClient = sb.createClient(SUPABASE_URL, SUPABASE_KEY);
+          return window.quizSupabaseClient;
+        }
+      } catch(e) {
+        console.warn('Supabase Realtime init:', e);
       }
-    } catch(e) {
-      console.warn('Supabase Realtime init:', e);
+      return null;
     }
 
     const quizDuelChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('quiz_duel_channel') : null;
@@ -1556,31 +1562,31 @@
       window.quizDuelState.isAiMode = false;
 
       // 1. Inicia Supabase Realtime Channel para o Host
-      if (window.quizSupabaseChannel && supabaseClient) {
-        try { supabaseClient.removeChannel(window.quizSupabaseChannel); } catch(e) {}
+      const sbClient = getSupabaseClient();
+      if (window.quizSupabaseChannel && sbClient) {
+        try { sbClient.removeChannel(window.quizSupabaseChannel); } catch(e) {}
       }
-      if (supabaseClient) {
-        window.quizSupabaseChannel = supabaseClient.channel('quiz_room_' + code, {
-          config: { broadcast: { self: false } }
+      if (sbClient) {
+        window.quizSupabaseChannel = sbClient.channel('quiz_room_' + code, {
+          config: { broadcast: { self: false }, presence: { key: 'host' } }
         });
 
         window.quizSupabaseChannel
           .on('broadcast', { event: 'GUEST_JOIN' }, ({ payload }) => {
             console.log('[HOST REALTIME] Convidado entrou via nuvem:', payload);
-            const room = window.quizDuelState.roomData;
-            if (room) {
-              room.guestId = payload.guestId || 'guest_online';
-              room.guestName = payload.guestName || 'Jogador 2 (Convidado)';
-              room.status = 'ready';
-              broadcastQuizDuel(code, room);
-              applyQuizDuelRoomUpdate(room);
+            const room = window.quizDuelState.roomData || initialRoom;
+            room.guestId = payload.guestId || 'guest_online';
+            room.guestName = payload.guestName || 'Jogador 2 (Convidado)';
+            room.status = 'ready';
+            broadcastQuizDuel(code, room);
+            applyQuizDuelRoomUpdate(room);
 
-              window.quizSupabaseChannel.send({
-                type: 'broadcast',
-                event: 'ROOM_STATE',
-                payload: { room: room }
-              });
-            }
+            // Responde imediatamente com o estado completo da sala
+            window.quizSupabaseChannel.send({
+              type: 'broadcast',
+              event: 'ROOM_STATE',
+              payload: { room: room }
+            });
           })
           .on('broadcast', { event: 'GUEST_SCORE' }, ({ payload }) => {
             const room = window.quizDuelState.roomData;
@@ -1602,6 +1608,11 @@
           })
           .subscribe((status) => {
             console.log('[HOST REALTIME] Status:', status);
+            if (status === 'SUBSCRIBED') {
+              try {
+                window.quizSupabaseChannel.track({ role: 'host', name: 'Jogador 1 (Host)', room: initialRoom });
+              } catch(e) {}
+            }
           });
       }
 
@@ -1630,15 +1641,13 @@
             conn.on('data', (data) => {
               if (!data) return;
               if (data.type === 'GUEST_JOIN') {
-                const room = window.quizDuelState.roomData;
-                if (room) {
-                  room.guestId = data.guestId || 'guest_p2p';
-                  room.guestName = data.guestName || 'Jogador 2 (Convidado)';
-                  room.status = 'ready';
-                  broadcastQuizDuel(code, room);
-                  applyQuizDuelRoomUpdate(room);
-                  try { conn.send({ type: 'ROOM_UPDATE', room: room }); } catch(e) {}
-                }
+                const room = window.quizDuelState.roomData || initialRoom;
+                room.guestId = data.guestId || 'guest_p2p';
+                room.guestName = data.guestName || 'Jogador 2 (Convidado)';
+                room.status = 'ready';
+                broadcastQuizDuel(code, room);
+                applyQuizDuelRoomUpdate(room);
+                try { conn.send({ type: 'ROOM_UPDATE', room: room }); } catch(e) {}
               } else if (data.type === 'GUEST_SCORE') {
                 const room = window.quizDuelState.roomData;
                 if (room) {
@@ -1673,9 +1682,11 @@
 
       showToast("Conectando à sala do Host...", 'info');
 
+      const sbClient = getSupabaseClient();
+
       // Limpa canais anteriores
-      if (window.quizSupabaseChannel && supabaseClient) {
-        try { supabaseClient.removeChannel(window.quizSupabaseChannel); } catch(e) {}
+      if (window.quizSupabaseChannel && sbClient) {
+        try { sbClient.removeChannel(window.quizSupabaseChannel); } catch(e) {}
       }
       if (window.quizP2P.peer) {
         try { window.quizP2P.peer.destroy(); } catch(e) {}
@@ -1684,30 +1695,38 @@
       let connected = false;
 
       // 1. Conecta via Supabase Realtime (Global Cloud)
-      if (supabaseClient) {
-        window.quizSupabaseChannel = supabaseClient.channel('quiz_room_' + code, {
-          config: { broadcast: { self: false } }
+      if (sbClient) {
+        window.quizSupabaseChannel = sbClient.channel('quiz_room_' + code, {
+          config: { broadcast: { self: false }, presence: { key: 'guest' } }
         });
+
+        const handleRoomState = (roomPayload) => {
+          if (connected) return;
+          connected = true;
+          console.log('[GUEST REALTIME] Conectado e configurado com sala:', roomPayload);
+          window.quizDuelState.roomCode = code;
+          window.quizDuelState.isHost = false;
+          window.quizDuelState.playerRole = 'guest';
+          window.quizDuelState.myDuelScore = 0;
+          window.quizDuelState.oppDuelScore = 0;
+          window.quizDuelState.isAiMode = false;
+
+          document.getElementById('duel-setup-container').classList.add('hidden');
+          document.getElementById('duel-active-lobby').classList.remove('hidden');
+          applyQuizDuelRoomUpdate(roomPayload);
+          showToast(`Conectado à Sala #${code}!`, 'success');
+        };
 
         window.quizSupabaseChannel
           .on('broadcast', { event: 'ROOM_STATE' }, ({ payload }) => {
-            console.log('[GUEST REALTIME] Sala recebida do Host:', payload);
-            connected = true;
-            window.quizDuelState.roomCode = code;
-            window.quizDuelState.isHost = false;
-            window.quizDuelState.playerRole = 'guest';
-            window.quizDuelState.myDuelScore = 0;
-            window.quizDuelState.oppDuelScore = 0;
-            window.quizDuelState.isAiMode = false;
-
-            document.getElementById('duel-setup-container').classList.add('hidden');
-            document.getElementById('duel-active-lobby').classList.remove('hidden');
-            applyQuizDuelRoomUpdate(payload.room);
-            showToast(`Conectado à Sala #${code}!`, 'success');
+            if (payload && payload.room) handleRoomState(payload.room);
+          })
+          .on('broadcast', { event: 'ROOM_UPDATE' }, ({ payload }) => {
+            if (payload && payload.room) handleRoomState(payload.room);
           })
           .on('broadcast', { event: 'START_GAME' }, ({ payload }) => {
             console.log('[GUEST REALTIME] Host iniciou o duelo!');
-            applyQuizDuelRoomUpdate(payload.room);
+            if (payload && payload.room) applyQuizDuelRoomUpdate(payload.room);
             launchDuelQuestionsRound(0);
           })
           .on('broadcast', { event: 'HOST_SCORE' }, ({ payload }) => {
@@ -1723,15 +1742,27 @@
           .subscribe((status) => {
             console.log('[GUEST REALTIME] Status:', status);
             if (status === 'SUBSCRIBED') {
-              // Envia evento de entrada para o Host imediatamente
-              window.quizSupabaseChannel.send({
-                type: 'broadcast',
-                event: 'GUEST_JOIN',
-                payload: {
-                  guestId: window.quizLocalUid,
-                  guestName: 'Jogador 2 (Convidado)'
-                }
-              });
+              try {
+                window.quizSupabaseChannel.track({ role: 'guest', name: 'Jogador 2 (Convidado)' });
+              } catch(e) {}
+
+              // Envia evento de entrada para o Host e repete até sincronizar
+              const sendJoin = () => {
+                if (connected) return;
+                window.quizSupabaseChannel.send({
+                  type: 'broadcast',
+                  event: 'GUEST_JOIN',
+                  payload: {
+                    guestId: window.quizLocalUid,
+                    guestName: 'Jogador 2 (Convidado)'
+                  }
+                });
+              };
+
+              sendJoin();
+              setTimeout(sendJoin, 600);
+              setTimeout(sendJoin, 1400);
+              setTimeout(sendJoin, 2200);
             }
           });
       }
@@ -1831,8 +1862,82 @@
           if (!connected && !window.quizDuelState.roomCode) {
             showToast("Sala não encontrada ou Host offline. Verifique o código digitado!", 'error');
           }
-        }, 4000);
+        }, 3500);
       }, 500);
+    };
+
+    function startDuelRoomPolling(code) {
+      if (window.quizDuelInterval) clearInterval(window.quizDuelInterval);
+      window.quizDuelInterval = setInterval(() => {
+        if (window.quizDuelState.roomCode !== code) {
+          clearInterval(window.quizDuelInterval);
+          return;
+        }
+        const raw = localStorage.getItem('quiz_duel_' + code);
+        if (raw) {
+          try { applyQuizDuelRoomUpdate(JSON.parse(raw)); } catch(e) {}
+        }
+      }, 600);
+    }
+
+    window.copyQuizDuelCode = function() {
+      if (window.quizDuelState.roomCode) {
+        try { navigator.clipboard.writeText(window.quizDuelState.roomCode); } catch(e) {}
+        showToast(`Código ${window.quizDuelState.roomCode} copiado para a área de transferência!`, 'success');
+      }
+    };
+
+    window.leaveQuizDuelRoom = function() {
+      if (window.quizDuelInterval) clearInterval(window.quizDuelInterval);
+      const sbClient = getSupabaseClient();
+      if (window.quizSupabaseChannel && sbClient) {
+        try {
+          window.quizSupabaseChannel.send({
+            type: 'broadcast',
+            event: window.quizDuelState.isHost ? 'HOST_LEAVE' : 'GUEST_LEAVE',
+            payload: {}
+          });
+          sbClient.removeChannel(window.quizSupabaseChannel);
+        } catch(e) {}
+      }
+      window.quizSupabaseChannel = null;
+
+      if (window.quizP2P.conn) {
+        try { window.quizP2P.conn.close(); } catch(e) {}
+      }
+      if (window.quizP2P.peer) {
+        try { window.quizP2P.peer.destroy(); } catch(e) {}
+      }
+      window.quizP2P.conn = null;
+      window.quizP2P.peer = null;
+      window.quizDuelState = { roomCode: null, isHost: false, playerRole: 'host', roomData: null, duelQuestions: [], currentRound: 0, myDuelScore: 0, oppDuelScore: 0, isAiMode: false };
+      document.getElementById('duel-active-lobby').classList.add('hidden');
+      document.getElementById('duel-setup-container').classList.remove('hidden');
+      showToast("Você saiu da sala de desafio.", 'info');
+    };
+
+    window.startActiveQuizDuel = function() {
+      const code = window.quizDuelState.roomCode;
+      const room = window.quizDuelState.roomData;
+      if (!room) return;
+
+      room.status = 'playing';
+      broadcastQuizDuel(code, room);
+
+      if (window.quizSupabaseChannel) {
+        try {
+          window.quizSupabaseChannel.send({
+            type: 'broadcast',
+            event: 'START_GAME',
+            payload: { room: room }
+          });
+        } catch(e) {}
+      }
+
+      if (window.quizP2P.conn && window.quizP2P.conn.open) {
+        try { window.quizP2P.conn.send({ type: 'START_GAME', room: room }); } catch(e) {}
+      }
+      launchDuelQuestionsRound(0);
     };
 
     function startDuelRoomPolling(code) {
