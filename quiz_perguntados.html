@@ -1465,6 +1465,9 @@
             event: 'ROOM_UPDATE',
             payload: { room: roomData }
           });
+          if (window.quizDuelState.isHost) {
+            window.quizSupabaseChannel.track({ role: 'host', name: 'Jogador 1 (Host)', room: roomData });
+          }
         } catch(e) {}
       }
       if (window.quizP2P.conn && window.quizP2P.conn.open) {
@@ -1718,15 +1721,27 @@
         };
 
         window.quizSupabaseChannel
+          .on('presence', { event: 'sync' }, () => {
+            try {
+              const pState = window.quizSupabaseChannel.presenceState();
+              if (pState && pState.host && pState.host.length > 0) {
+                const hostPresence = pState.host[0];
+                if (hostPresence && hostPresence.room && !connected) {
+                  console.log('[GUEST REALTIME] Host detectado via presence! Conectando...', hostPresence.room);
+                  handleRoomState(hostPresence.room);
+                }
+              }
+            } catch(e) {}
+          })
           .on('broadcast', { event: 'ROOM_STATE' }, ({ payload }) => {
-            if (payload && payload.room) handleRoomState(payload.room);
+            if (payload && (payload.room || payload)) handleRoomState(payload.room || payload);
           })
           .on('broadcast', { event: 'ROOM_UPDATE' }, ({ payload }) => {
-            if (payload && payload.room) handleRoomState(payload.room);
+            if (payload && (payload.room || payload)) handleRoomState(payload.room || payload);
           })
           .on('broadcast', { event: 'START_GAME' }, ({ payload }) => {
             console.log('[GUEST REALTIME] Host iniciou o duelo!');
-            if (payload && payload.room) applyQuizDuelRoomUpdate(payload.room);
+            if (payload && (payload.room || payload)) applyQuizDuelRoomUpdate(payload.room || payload);
             launchDuelQuestionsRound(0);
           })
           .on('broadcast', { event: 'HOST_SCORE' }, ({ payload }) => {
