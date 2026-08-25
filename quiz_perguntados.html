@@ -1680,6 +1680,28 @@
         });
 
         window.quizSupabaseChannel
+          .on('presence', { event: 'sync' }, () => {
+            try {
+              const p = window.quizSupabaseChannel.presenceState();
+              if (p && p.guest && p.guest.length > 0) {
+                const guestP = p.guest[0];
+                const room = window.quizDuelState.roomData || initialRoom;
+                if (room && (!room.guestId || room.status === 'lobby')) {
+                  console.log('[HOST REALTIME] Convidado detectado via presença:', guestP);
+                  room.guestId = guestP.id || 'guest_online';
+                  room.guestName = guestP.name || 'Jogador 2 (Convidado)';
+                  room.status = 'ready';
+                  broadcastQuizDuel(code, room);
+                  applyQuizDuelRoomUpdate(room);
+                  window.quizSupabaseChannel.send({
+                    type: 'broadcast',
+                    event: 'ROOM_STATE',
+                    payload: { room: room }
+                  });
+                }
+              }
+            } catch(e) {}
+          })
           .on('broadcast', { event: 'GUEST_JOIN' }, ({ payload }) => {
             console.log('[HOST REALTIME] Convidado entrou via nuvem:', payload);
             const room = window.quizDuelState.roomData || initialRoom;
@@ -1822,6 +1844,7 @@
         const handleRoomState = (roomPayload) => {
           if (connected) return;
           connected = true;
+          if (window.quizGuestRetryInterval) clearInterval(window.quizGuestRetryInterval);
           console.log('[GUEST REALTIME] Conectado e configurado com sala:', roomPayload);
           window.quizDuelState.roomCode = code;
           window.quizDuelState.isHost = false;
@@ -1899,7 +1922,7 @@
             console.log('[GUEST REALTIME] Status:', status);
             if (status === 'SUBSCRIBED') {
               try {
-                window.quizSupabaseChannel.track({ role: 'guest', name: 'Jogador 2 (Convidado)' });
+                window.quizSupabaseChannel.track({ role: 'guest', id: window.quizLocalUid, name: 'Jogador 2 (Convidado)' });
               } catch(e) {}
 
               // Envia evento de entrada para o Host e repete até sincronizar
@@ -1916,9 +1939,14 @@
               };
 
               sendJoin();
-              setTimeout(sendJoin, 600);
-              setTimeout(sendJoin, 1400);
-              setTimeout(sendJoin, 2200);
+              if (window.quizGuestRetryInterval) clearInterval(window.quizGuestRetryInterval);
+              window.quizGuestRetryInterval = setInterval(() => {
+                if (connected || !window.quizSupabaseChannel) {
+                  clearInterval(window.quizGuestRetryInterval);
+                  return;
+                }
+                sendJoin();
+              }, 600);
             }
           });
       }
