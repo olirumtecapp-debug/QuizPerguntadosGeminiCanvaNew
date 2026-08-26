@@ -2245,28 +2245,17 @@
         if (room) {
           if (window.quizDuelState.isHost) room.hostScore = window.quizDuelState.myDuelScore;
           else room.guestScore = window.quizDuelState.myDuelScore;
-          broadcastQuizDuel(code, room);
         }
         const scorePayload = {
           score: window.quizDuelState.myDuelScore,
           correct: window.quizDuelState.myDuelCorrect || 0,
           totalTime: window.quizDuelState.myDuelTotalTime || 0
         };
-        if (window.quizSupabaseChannel) {
-          try {
-            window.quizSupabaseChannel.send({
-              type: 'broadcast',
-              event: window.quizDuelState.isHost ? 'HOST_SCORE' : 'GUEST_SCORE',
-              payload: scorePayload
-            });
-          } catch(e) {}
-        }
-        if (window.quizP2P.conn && window.quizP2P.conn.open) {
-          if (window.quizDuelState.isHost) {
-            try { window.quizP2P.conn.send({ type: 'HOST_SCORE', ...scorePayload }); } catch(e) {}
-          } else {
-            try { window.quizP2P.conn.send({ type: 'GUEST_SCORE', ...scorePayload }); } catch(e) {}
-          }
+        emitDuelMessage(window.quizDuelState.isHost ? 'HOST_SCORE' : 'GUEST_SCORE', scorePayload);
+        if (room && code) {
+          getOrCreateSupabase().then(sb => {
+            if (sb) sb.from('rooms').update({ state: room }).eq('code', code);
+          }).catch(() => {});
         }
       }
 
@@ -2311,7 +2300,14 @@
 
       if (window.quizDuelState.roomData) {
         window.quizDuelState.roomData.status = 'finished';
-        broadcastQuizDuel(window.quizDuelState.roomCode, window.quizDuelState.roomData);
+        const code = window.quizDuelState.roomCode;
+        const room = window.quizDuelState.roomData;
+        emitDuelMessage('ROOM_UPDATE', { room: room });
+        if (code) {
+          getOrCreateSupabase().then(sb => {
+            if (sb) sb.from('rooms').update({ status: 'finished', state: room }).eq('code', code);
+          }).catch(() => {});
+        }
       }
 
       const isHost = window.quizDuelState.isHost;
@@ -2481,20 +2477,11 @@
         window.quizDuelState.myDuelTotalTime = 0;
         window.quizDuelState.oppDuelTotalTime = 0;
 
-        broadcastQuizDuel(code, room);
-
-        if (window.quizSupabaseChannel) {
-          try {
-            window.quizSupabaseChannel.send({
-              type: 'broadcast',
-              event: 'START_REMATCH',
-              payload: { room: room }
-            });
-          } catch(e) {}
-        }
-
-        if (window.quizP2P.conn && window.quizP2P.conn.open) {
-          try { window.quizP2P.conn.send({ type: 'START_REMATCH', room: room }); } catch(e) {}
+        emitDuelMessage('START_REMATCH', { room: room });
+        if (code) {
+          getOrCreateSupabase().then(sb => {
+            if (sb) sb.from('rooms').update({ status: 'playing', state: room }).eq('code', code);
+          }).catch(() => {});
         }
 
         document.getElementById('duel-result-modal').classList.add('hidden');
@@ -2505,18 +2492,7 @@
       } else {
         // 3. Multiplayer Convidado (solicita ao Host)
         showToast("Solicitação de revanche enviada ao Criador!", 'info');
-        if (window.quizSupabaseChannel) {
-          try {
-            window.quizSupabaseChannel.send({
-              type: 'broadcast',
-              event: 'REQUEST_REMATCH',
-              payload: { guestId: window.quizLocalUid }
-            });
-          } catch(e) {}
-        }
-        if (window.quizP2P.conn && window.quizP2P.conn.open) {
-          try { window.quizP2P.conn.send({ type: 'REQUEST_REMATCH' }); } catch(e) {}
-        }
+        emitDuelMessage('REQUEST_REMATCH', { guestId: window.quizLocalUid });
       }
     };
 
