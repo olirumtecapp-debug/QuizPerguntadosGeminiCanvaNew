@@ -1783,6 +1783,25 @@
             if (status === 'SUBSCRIBED') {
               try {
                 window.quizSupabaseChannel.track({ role: 'host', name: 'Jogador 1 (Host)', room: initialRoom });
+                const p = window.quizSupabaseChannel.presenceState();
+                for (const key in p) {
+                  const presences = p[key];
+                  if (Array.isArray(presences)) {
+                    for (const guestP of presences) {
+                      if (guestP && guestP.role === 'guest') {
+                        const room = window.quizDuelState.roomData || initialRoom;
+                        if (room && (!room.guestId || room.status === 'lobby')) {
+                          room.guestId = guestP.id || 'guest_online';
+                          room.guestName = guestP.name || 'Jogador 2 (Convidado)';
+                          room.status = 'ready';
+                          broadcastQuizDuel(code, room);
+                          applyQuizDuelRoomUpdate(room);
+                          window.quizSupabaseChannel.send({ type: 'broadcast', event: 'ROOM_STATE', payload: { room: room } });
+                        }
+                      }
+                    }
+                  }
+                }
               } catch(e) {}
             }
           });
@@ -1988,6 +2007,21 @@
             if (status === 'SUBSCRIBED') {
               try {
                 window.quizSupabaseChannel.track({ role: 'guest', id: window.quizLocalUid, name: 'Jogador 2 (Convidado)' });
+                
+                // Checa imediatamente se o Host já está no cluster
+                const pState = window.quizSupabaseChannel.presenceState();
+                for (const key in pState) {
+                  const presences = pState[key];
+                  if (Array.isArray(presences)) {
+                    for (const p of presences) {
+                      if (p && p.role === 'host' && p.room) {
+                        console.log('[GUEST REALTIME] Host encontrado imediatamente no cluster! Conectando...', p.room);
+                        finishConnecting(p.room);
+                        return;
+                      }
+                    }
+                  }
+                }
               } catch(e) {}
 
               // Envia evento de entrada para o Host e repete até sincronizar
@@ -2011,7 +2045,7 @@
                   return;
                 }
                 sendJoin();
-              }, 500);
+              }, 400);
             }
           });
       }
