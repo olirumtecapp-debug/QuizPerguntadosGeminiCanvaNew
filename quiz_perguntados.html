@@ -1508,6 +1508,43 @@
       document.getElementById('crown-modal').classList.remove('hidden');
     }
 
+    function showToast(msg, type = 'info') {
+      try {
+        let toast = document.getElementById('quiz-dynamic-toast');
+        if (!toast) {
+          toast = document.createElement('div');
+          toast.id = 'quiz-dynamic-toast';
+          document.body.appendChild(toast);
+        }
+
+        const colors = {
+          success: 'bg-emerald-600 text-white border-emerald-400',
+          error: 'bg-red-600 text-white border-red-400',
+          info: 'bg-cyan-600 text-white border-cyan-400',
+          warning: 'bg-amber-600 text-white border-amber-400'
+        };
+
+        const icons = {
+          success: '<i class="fa-solid fa-circle-check"></i>',
+          error: '<i class="fa-solid fa-circle-exclamation"></i>',
+          info: '<i class="fa-solid fa-circle-info"></i>',
+          warning: '<i class="fa-solid fa-triangle-exclamation"></i>'
+        };
+
+        toast.className = `fixed top-5 right-5 z-[99999] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-2xl transition-all duration-300 transform translate-y-0 opacity-100 flex items-center gap-2 border ${colors[type] || colors.info}`;
+        toast.innerHTML = `${icons[type] || icons.info} <span>${msg}</span>`;
+
+        if (window.quizToastTimeout) clearTimeout(window.quizToastTimeout);
+        window.quizToastTimeout = setTimeout(() => {
+          if (toast) {
+            toast.className = 'fixed top-5 right-5 z-[99999] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-2xl transition-all duration-300 transform translate-y-[-20px] opacity-0 pointer-events-none flex items-center gap-2 border';
+          }
+        }, 3000);
+      } catch(e) {
+        console.log('[TOAST]', msg);
+      }
+    }
+
     // =========================================================================
     // 🌐 SISTEMA DE DUELO 1V1 ONLINE (SUPABASE REALTIME + BROADCASTCHANNEL LOCAL)
     // =========================================================================
