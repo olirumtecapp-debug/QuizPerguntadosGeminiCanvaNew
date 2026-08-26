@@ -1544,18 +1544,24 @@
       return null;
     }
 
-    function getSupabaseClient() {
-      if (window.quizSupabaseClient) return window.quizSupabaseClient;
+    function createFreshSupabaseClient() {
       try {
         const sb = window.supabase || (typeof supabase !== 'undefined' ? supabase : null);
         if (sb && sb.createClient) {
-          window.quizSupabaseClient = sb.createClient(SUPABASE_URL, SUPABASE_KEY);
-          return window.quizSupabaseClient;
+          return sb.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false }
+          });
         }
       } catch(e) {
-        console.warn('Supabase Realtime init:', e);
+        console.warn('Supabase fresh client error:', e);
       }
       return null;
+    }
+
+    function getSupabaseClient() {
+      if (window.quizSupabaseClient) return window.quizSupabaseClient;
+      window.quizSupabaseClient = createFreshSupabaseClient();
+      return window.quizSupabaseClient;
     }
 
     const quizDuelChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('quiz_duel_channel') : null;
@@ -1698,9 +1704,12 @@
       window.quizDuelState.isAiMode = false;
 
       // 1. Inicia Supabase Realtime Channel para o Host
-      const sbClient = await ensureSupabaseClient();
-      if (window.quizSupabaseChannel && sbClient) {
-        try { sbClient.removeChannel(window.quizSupabaseChannel); } catch(e) {}
+      await ensureSupabaseClient();
+      const sbClient = createFreshSupabaseClient();
+      window.quizSupabaseClient = sbClient;
+      if (window.quizSupabaseChannel) {
+        try { window.quizSupabaseChannel.unsubscribe(); } catch(e) {}
+        window.quizSupabaseChannel = null;
       }
       if (sbClient) {
         window.quizSupabaseChannel = sbClient.channel('quiz_room_' + code, {
@@ -1891,13 +1900,12 @@
 
       showToast(`Buscando sala #${code}...`, 'info');
 
-      const sbClient = await ensureSupabaseClient();
+      await ensureSupabaseClient();
+      const sbClient = createFreshSupabaseClient();
+      window.quizSupabaseClient = sbClient;
 
       if (window.quizSupabaseChannel) {
-        try {
-          window.quizSupabaseChannel.unsubscribe();
-          if (sbClient) sbClient.removeChannel(window.quizSupabaseChannel);
-        } catch(e) {}
+        try { window.quizSupabaseChannel.unsubscribe(); } catch(e) {}
         window.quizSupabaseChannel = null;
       }
       if (window.quizP2P.peer) {
