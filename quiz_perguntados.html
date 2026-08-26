@@ -1671,10 +1671,6 @@
         startBtn.classList.add('hidden');
         instructions.textContent = "Compartilhe o código com seu amigo. Quando ele entrar, o desafio pode começar!";
       }
-
-      if (room.status === 'playing' && gameState.activeMode !== 'duel') {
-        launchDuelQuestionsRound(0);
-      }
     }
 
     window.createQuizDuelRoom = async function() {
@@ -2354,7 +2350,7 @@
       setTimeout(() => {
         document.getElementById('question-modal').classList.add('hidden');
         launchDuelQuestionsRound(roundIdx + 1);
-      }, 1500);
+      }, 2000);
     }
 
     function handleDuelTimeout() {
@@ -2383,12 +2379,17 @@
       setTimeout(() => {
         document.getElementById('question-modal').classList.add('hidden');
         launchDuelQuestionsRound(roundIdx + 1);
-      }, 1500);
+      }, 2000);
     }
 
     function finishQuizDuel() {
       document.getElementById('question-modal').classList.add('hidden');
-      gameState.activeMode = 'wheel';
+      gameState.activeMode = 'duel_finished';
+
+      if (window.quizDuelState.roomData) {
+        window.quizDuelState.roomData.status = 'finished';
+        broadcastQuizDuel(window.quizDuelState.roomCode, window.quizDuelState.roomData);
+      }
 
       const isHost = window.quizDuelState.isHost;
       const myScore = window.quizDuelState.myDuelScore || 0;
