@@ -1537,17 +1537,39 @@
     let localBroadcastChannel = null;
     let guestHeartbeatInterval = null;
 
-    function getOrCreateSupabase() {
+    async function getOrCreateSupabase() {
+      if (globalSbClient) return globalSbClient;
+
+      for (let i = 0; i < 30; i++) {
+        try {
+          const sb = window.supabase || (typeof supabase !== 'undefined' ? supabase : null);
+          if (sb && sb.createClient) {
+            globalSbClient = sb.createClient(SUPABASE_URL, SUPABASE_KEY, {
+              auth: { persistSession: false, autoRefreshToken: false }
+            });
+            return globalSbClient;
+          }
+        } catch(e) {}
+        await new Promise(r => setTimeout(r, 100));
+      }
+
       try {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
         const sb = window.supabase || (typeof supabase !== 'undefined' ? supabase : null);
         if (sb && sb.createClient) {
-          return sb.createClient(SUPABASE_URL, SUPABASE_KEY, {
-            auth: { persistSession: false }
+          globalSbClient = sb.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false }
           });
+          return globalSbClient;
         }
-      } catch(e) {
-        console.warn('Supabase init error:', e);
-      }
+      } catch(e) {}
+
       return null;
     }
 
@@ -1640,7 +1662,7 @@
       }
     }
 
-    window.createQuizDuelRoom = function() {
+    window.createQuizDuelRoom = async function() {
       const code = Math.floor(1000 + Math.random() * 9000).toString();
       const questions = generateDuelQuestions();
 
@@ -1690,7 +1712,7 @@
       }
 
       // 2. Canal Supabase Realtime (jogadores em computadores/celulares diferentes)
-      const sb = getOrCreateSupabase();
+      const sb = await getOrCreateSupabase();
       if (sb) {
         globalSbClient = sb;
         globalSbChannel = sb.channel('quiz_room_' + code, {
@@ -1755,7 +1777,7 @@
       }
     }
 
-    window.joinQuizDuelRoom = function() {
+    window.joinQuizDuelRoom = async function() {
       const input = document.getElementById('quiz-room-code-input');
       const code = input ? input.value.replace(/[^0-9A-Z]/gi, '').trim().toUpperCase() : '';
 
@@ -1861,7 +1883,7 @@
       }
 
       // 3. Supabase Realtime (Global Cloud)
-      const sb = getOrCreateSupabase();
+      const sb = await getOrCreateSupabase();
       if (sb) {
         globalSbClient = sb;
         globalSbChannel = sb.channel('quiz_room_' + code, {
