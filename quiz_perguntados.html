@@ -1668,7 +1668,7 @@
 
       const initialRoom = {
         code: code,
-        status: 'lobby',
+        status: 'waiting',
         hostId: window.quizLocalUid,
         hostName: 'Jogador 1 (Host)',
         guestId: null,
@@ -1693,6 +1693,7 @@
 
       try { localStorage.setItem('quiz_room_' + code, JSON.stringify(initialRoom)); } catch(e) {}
 
+      if (window.quizRoomPollInterval) clearInterval(window.quizRoomPollInterval);
       if (globalSbChannel) {
         try { globalSbChannel.unsubscribe(); } catch(e) {}
         globalSbChannel = null;
@@ -1711,9 +1712,23 @@
         };
       }
 
-      // 2. Canal Supabase Realtime (jogadores em computadores/celulares diferentes)
+      // 2. Registra na tabela 'rooms' do Supabase DB
       const sb = await getOrCreateSupabase();
       if (sb) {
+        try {
+          await sb.from('rooms').upsert({
+            code: code,
+            host_id: window.quizLocalUid,
+            host_name: 'Jogador 1 (Host)',
+            guest_id: null,
+            guest_name: null,
+            status: 'waiting',
+            state: initialRoom
+          });
+        } catch(e) {
+          console.warn('DB upsert error:', e);
+        }
+
         globalSbClient = sb;
         globalSbChannel = sb.channel('quiz_room_' + code, {
           config: { broadcast: { self: false } }
@@ -1732,9 +1747,28 @@
           .on('broadcast', { event: 'GUEST_LEAVE' }, () => {
             handleHostIncomingMessage('GUEST_LEAVE', {}, code);
           })
-          .subscribe((status) => {
-            console.log('[HOST] Supabase status:', status);
-          });
+          .subscribe();
+
+        // Host DB Polling (garante 100% de sincronizacao caso websocket oscile)
+        window.quizRoomPollInterval = setInterval(async () => {
+          if (window.quizDuelState.roomCode !== code) {
+            clearInterval(window.quizRoomPollInterval);
+            return;
+          }
+          try {
+            const { data } = await sb.from('rooms').select('*').eq('code', code).maybeSingle();
+            if (data && data.guest_id) {
+              const room = window.quizDuelState.roomData || initialRoom;
+              if (room.status === 'lobby' || room.status === 'waiting' || !room.guestId) {
+                room.guestId = data.guest_id;
+                room.guestName = data.guest_name || 'Jogador 2 (Convidado)';
+                room.status = 'ready';
+                applyQuizDuelRoomUpdate(room);
+                emitDuelMessage('ROOM_STATE', { room: room });
+              }
+            }
+          } catch(e) {}
+        }, 1000);
       }
 
       document.getElementById('duel-setup-container').classList.add('hidden');
@@ -1756,6 +1790,11 @@
         applyQuizDuelRoomUpdate(room);
         emitDuelMessage('ROOM_STATE', { room: room });
         emitDuelMessage('ROOM_UPDATE', { room: room });
+
+        // Atualiza banco de dados
+        getOrCreateSupabase().then(sb => {
+          if (sb) sb.from('rooms').update({ guest_id: room.guestId, guest_name: room.guestName, status: 'ready', state: room }).eq('code', code);
+        }).catch(() => {});
       } else if (event === 'GUEST_SCORE') {
         room.guestScore = payload.score;
         window.quizDuelState.oppDuelScore = payload.score;
@@ -1770,7 +1809,7 @@
         if (room.status !== 'playing') {
           room.guestId = null;
           room.guestName = 'Aguardando...';
-          room.status = 'lobby';
+          room.status = 'waiting';
           applyQuizDuelRoomUpdate(room);
           emitDuelMessage('ROOM_UPDATE', { room: room });
         }
@@ -1802,6 +1841,7 @@
 
       showToast(`Conectando à sala #${code}...`, 'info');
 
+      if (window.quizRoomPollInterval) clearInterval(window.quizRoomPollInterval);
       if (globalSbChannel) {
         try { globalSbChannel.unsubscribe(); } catch(e) {}
         globalSbChannel = null;
@@ -1882,9 +1922,40 @@
         });
       }
 
-      // 3. Supabase Realtime (Global Cloud)
+      // 3. Supabase Database & Realtime Cloud
       const sb = await getOrCreateSupabase();
       if (sb) {
+        try {
+          // Busca sala diretamente no Banco de Dados
+          const { data: dbRoom } = await sb.from('rooms').select('*').eq('code', code).maybeSingle();
+          if (dbRoom) {
+            console.log('[GUEST] Sala encontrada no DB!', dbRoom);
+            await sb.from('rooms').update({
+              guest_id: window.quizLocalUid,
+              guest_name: 'Jogador 2 (Convidado)',
+              status: 'ready'
+            }).eq('code', code);
+
+            const room = dbRoom.state || {
+              code: code,
+              status: 'ready',
+              hostId: dbRoom.host_id,
+              hostName: dbRoom.host_name || 'Jogador 1 (Host)',
+              guestId: window.quizLocalUid,
+              guestName: 'Você (Convidado)',
+              hostScore: 0,
+              guestScore: 0,
+              questions: generateDuelQuestions()
+            };
+            room.status = 'ready';
+            room.guestId = window.quizLocalUid;
+            room.guestName = 'Você (Convidado)';
+            completeGuestConnection(room);
+          }
+        } catch(e) {
+          console.warn('DB join error:', e);
+        }
+
         globalSbClient = sb;
         globalSbChannel = sb.channel('quiz_room_' + code, {
           config: { broadcast: { self: false } }
@@ -1912,7 +1983,6 @@
             leaveQuizDuelRoom();
           })
           .subscribe((status) => {
-            console.log('[GUEST] Supabase status:', status);
             if (status === 'SUBSCRIBED') {
               const sendJoin = () => {
                 if (connected) return;
@@ -1926,6 +1996,24 @@
               guestHeartbeatInterval = setInterval(sendJoin, 400);
             }
           });
+
+        // Guest DB Polling (escuta inicio da partida se websocket atrasar)
+        window.quizRoomPollInterval = setInterval(async () => {
+          if (window.quizDuelState.roomCode !== code) {
+            clearInterval(window.quizRoomPollInterval);
+            return;
+          }
+          try {
+            const { data: currentRoom } = await sb.from('rooms').select('*').eq('code', code).maybeSingle();
+            if (currentRoom) {
+              const r = currentRoom.state || window.quizDuelState.roomData;
+              if (currentRoom.status === 'playing' && gameState.activeMode !== 'duel' && gameState.activeMode !== 'duel_finished') {
+                if (r) applyQuizDuelRoomUpdate(r);
+                launchDuelQuestionsRound(0);
+              }
+            }
+          } catch(e) {}
+        }, 1000);
       }
 
       // Fallback Timeout de 6 segundos
