@@ -1711,21 +1711,28 @@
           .on('presence', { event: 'sync' }, () => {
             try {
               const p = window.quizSupabaseChannel.presenceState();
-              if (p && p.guest && p.guest.length > 0) {
-                const guestP = p.guest[0];
-                const room = window.quizDuelState.roomData || initialRoom;
-                if (room && (!room.guestId || room.status === 'lobby')) {
-                  console.log('[HOST REALTIME] Convidado detectado via presença:', guestP);
-                  room.guestId = guestP.id || 'guest_online';
-                  room.guestName = guestP.name || 'Jogador 2 (Convidado)';
-                  room.status = 'ready';
-                  broadcastQuizDuel(code, room);
-                  applyQuizDuelRoomUpdate(room);
-                  window.quizSupabaseChannel.send({
-                    type: 'broadcast',
-                    event: 'ROOM_STATE',
-                    payload: { room: room }
-                  });
+              for (const key in p) {
+                const presences = p[key];
+                if (Array.isArray(presences)) {
+                  for (const guestP of presences) {
+                    if (guestP && guestP.role === 'guest') {
+                      const room = window.quizDuelState.roomData || initialRoom;
+                      if (room && (!room.guestId || room.status === 'lobby')) {
+                        console.log('[HOST REALTIME] Convidado detectado via presença:', guestP);
+                        room.guestId = guestP.id || 'guest_online';
+                        room.guestName = guestP.name || 'Jogador 2 (Convidado)';
+                        room.status = 'ready';
+                        broadcastQuizDuel(code, room);
+                        applyQuizDuelRoomUpdate(room);
+                        window.quizSupabaseChannel.send({
+                          type: 'broadcast',
+                          event: 'ROOM_STATE',
+                          payload: { room: room }
+                        });
+                        return;
+                      }
+                    }
+                  }
                 }
               }
             } catch(e) {}
@@ -1842,29 +1849,41 @@
 
     window.joinQuizDuelRoom = async function() {
       const input = document.getElementById('quiz-room-code-input');
-      const code = input ? input.value.trim().toUpperCase() : '';
+      const code = input ? input.value.replace(/[^0-9A-Z]/gi, '').trim().toUpperCase() : '';
 
       if (code.length !== 4) {
-        showToast("Digite um código de convite de 4 dígitos!", 'error');
+        showToast("Digite o código de 4 dígitos!", 'error');
         return;
       }
 
-      const joinBtn = document.querySelector('button[onclick="joinQuizDuelRoom()"]');
-      if (joinBtn) {
-        joinBtn.disabled = true;
-        joinBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> CONECTANDO...';
-      }
+      const resetButtons = () => {
+        const btns = document.querySelectorAll('button[onclick="joinQuizDuelRoom()"]');
+        btns.forEach(b => {
+          b.disabled = false;
+          b.innerHTML = '<i class="fa-solid fa-plug"></i> CONECTAR À SALA';
+        });
+      };
+
+      const btns = document.querySelectorAll('button[onclick="joinQuizDuelRoom()"]');
+      btns.forEach(b => {
+        b.disabled = true;
+        b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> CONECTANDO...';
+      });
 
       showToast(`Buscando sala #${code}...`, 'info');
 
       const sbClient = await ensureSupabaseClient();
 
-      // Limpa canais anteriores
-      if (window.quizSupabaseChannel && sbClient) {
-        try { sbClient.removeChannel(window.quizSupabaseChannel); } catch(e) {}
+      if (window.quizSupabaseChannel) {
+        try {
+          window.quizSupabaseChannel.unsubscribe();
+          if (sbClient) sbClient.removeChannel(window.quizSupabaseChannel);
+        } catch(e) {}
+        window.quizSupabaseChannel = null;
       }
       if (window.quizP2P.peer) {
         try { window.quizP2P.peer.destroy(); } catch(e) {}
+        window.quizP2P.peer = null;
       }
 
       let connected = false;
@@ -1872,12 +1891,12 @@
       const finishConnecting = (roomPayload) => {
         if (connected) return;
         connected = true;
-        if (joinBtn) {
-          joinBtn.disabled = false;
-          joinBtn.innerHTML = '<i class="fa-solid fa-plug"></i> CONECTAR À SALA';
-        }
+        resetButtons();
         if (window.quizGuestRetryInterval) clearInterval(window.quizGuestRetryInterval);
-        console.log('[GUEST REALTIME] Conectado e configurado com sala:', roomPayload);
+        
+        const room = (roomPayload && roomPayload.room) ? roomPayload.room : roomPayload;
+        console.log('[GUEST REALTIME] Conectado e configurado com sala:', room);
+        
         window.quizDuelState.roomCode = code;
         window.quizDuelState.isHost = false;
         window.quizDuelState.playerRole = 'guest';
@@ -1889,9 +1908,12 @@
         window.quizDuelState.oppDuelTotalTime = 0;
         window.quizDuelState.isAiMode = false;
 
-        document.getElementById('duel-setup-container').classList.add('hidden');
-        document.getElementById('duel-active-lobby').classList.remove('hidden');
-        applyQuizDuelRoomUpdate(roomPayload);
+        const setupEl = document.getElementById('duel-setup-container');
+        const lobbyEl = document.getElementById('duel-active-lobby');
+        if (setupEl) setupEl.classList.add('hidden');
+        if (lobbyEl) lobbyEl.classList.remove('hidden');
+
+        applyQuizDuelRoomUpdate(room);
         showToast(`Conectado à Sala #${code}!`, 'success');
       };
 
@@ -1905,11 +1927,16 @@
           .on('presence', { event: 'sync' }, () => {
             try {
               const pState = window.quizSupabaseChannel.presenceState();
-              if (pState && pState.host && pState.host.length > 0) {
-                const hostPresence = pState.host[0];
-                if (hostPresence && hostPresence.room && !connected) {
-                  console.log('[GUEST REALTIME] Host detectado via presence! Conectando...', hostPresence.room);
-                  finishConnecting(hostPresence.room);
+              for (const key in pState) {
+                const presences = pState[key];
+                if (Array.isArray(presences)) {
+                  for (const p of presences) {
+                    if (p && p.role === 'host' && p.room) {
+                      console.log('[GUEST REALTIME] Host detectado via presença! Conectando...', p.room);
+                      finishConnecting(p.room);
+                      return;
+                    }
+                  }
                 }
               }
             } catch(e) {}
@@ -1984,7 +2011,7 @@
                   return;
                 }
                 sendJoin();
-              }, 600);
+              }, 500);
             }
           });
       }
